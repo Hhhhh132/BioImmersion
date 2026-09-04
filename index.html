@@ -1054,6 +1054,9 @@ function computeGroundedPositions(){
   return{positions,variants:withData,props};
 }
 function renderExplore(){
+  // Always recompute from the current variant list before drawing, so the map can never
+  // silently drop points because a cached position dict fell out of sync with state.variants.
+  state.mapPositions=computeMapPositions(state.variants);
   const sel=variantById(state.selectedVariantId);
   const families=state.families;
   const legend=families.map(f=>`<span class="legend-chip ${state.legendOff[f.id]?'off':''}" data-legend="${f.id}"><span class="dot" style="background:${familyColor(f.id)}"></span>${esc(f.name)}</span>`).join('');
@@ -1117,6 +1120,7 @@ function renderExplore(){
         :state.exploreMapMode==='grounded'?'Each point is a <b>user-submitted variant</b> (demo/seed entries are excluded) positioned by a PCA projection of its z-scored measured properties — so distance reflects how similar two materials\' actual measurements are, not how their descriptions read. Recomputed live: edits, deletions, and new entries all update it immediately.'
         :"Each point is a material <b>variant</b>, not a family — position is a rough semantic projection of how it has been described."
       }</p>
+      <p class="hint" style="margin-top:-4px;">Note: demo/seed entries are shown on this Semantic map and on the Property (Ashby) plot. Only the Grounded / data-driven plot excludes them — it draws its positions from user-submitted measurements only, so it stays empty until real data has been added.</p>
     </div>
     <div class="card mini-card">
       ${sel?`
@@ -2257,3 +2261,4 @@ document.getElementById('engineModeSelect').addEventListener('change',async e=>{
 </script>
 </body>
 </html>
+
