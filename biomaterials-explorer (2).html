@@ -1,0 +1,2259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Biomaterials Experience Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --paper:#EDF0EA; --surface:#F9FAF6; --surface-2:#E4E8DE;
+  --ink:#1C231F; --ink-soft:#4B564E; --graphite:#6B7670;
+  --line:rgba(28,35,31,0.13); --line-soft:rgba(28,35,31,0.07);
+  --brass:#B4823C; --brass-soft:#E4CFA4;
+  --signal:#375A73; --signal-soft:#C9D9E1;
+  --moss:#5C6E4E; --moss-soft:#D8E0CD;
+  --clay:#9A5B3C; --clay-soft:#E9CFC0;
+  --danger:#9A4B3C;
+  --radius-sm:3px; --radius-md:6px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{background:var(--paper);color:var(--ink);font-family:'Source Serif 4',Georgia,serif;-webkit-font-smoothing:antialiased;min-height:100vh;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+.display{font-family:'Space Grotesk',sans-serif;}
+.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--graphite);}
+a{color:inherit;}
+button{font-family:inherit;}
+.shell{max-width:1280px;margin:0 auto;padding:24px 24px 80px;}
+
+/* masthead */
+header.masthead{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:6px;flex-wrap:wrap;}
+header.masthead h1{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(24px,3vw,34px);letter-spacing:-0.01em;margin:6px 0 6px;}
+header.masthead p{margin:0;max-width:52ch;color:var(--ink-soft);font-size:14px;line-height:1.5;}
+.masthead-right{display:flex;flex-direction:column;align-items:flex-end;gap:10px;}
+.search-box{position:relative;width:min(260px,60vw);}
+.search-box input{width:100%;font-family:'IBM Plex Mono',monospace;font-size:12.5px;padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);}
+.engine-toggle{display:flex;align-items:center;gap:6px;}
+.engine-toggle select{font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:4px 6px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink-soft);}
+.engine-note{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--graphite);max-width:220px;text-align:right;}
+.search-results{position:absolute;top:100%;right:0;margin-top:4px;width:340px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);box-shadow:0 8px 24px rgba(0,0,0,0.1);z-index:50;max-height:340px;overflow-y:auto;}
+.search-results .sr-item{padding:9px 12px;border-bottom:1px solid var(--line-soft);cursor:pointer;font-size:13px;}
+.search-results .sr-item:hover{background:var(--surface-2);}
+.search-results .sr-item .sr-fam{font-family:'IBM Plex Mono',monospace;font-size:9.5px;text-transform:uppercase;letter-spacing:0.06em;color:var(--graphite);}
+.search-results .sr-empty{padding:12px;font-size:12px;color:var(--graphite);}
+
+/* nav */
+nav.tabs{display:flex;gap:2px;margin:16px 0 22px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+nav.tabs button{background:none;border:none;border-bottom:2px solid transparent;padding:10px 14px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--graphite);}
+nav.tabs button:hover{color:var(--ink);}
+nav.tabs button.active{color:var(--ink);border-bottom-color:var(--brass);}
+
+/* generic cards */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:20px 22px;}
+.card + .card{margin-top:16px;}
+.card h2,.card h3{font-family:'Space Grotesk',sans-serif;font-weight:600;margin:2px 0 4px;}
+.card h2{font-size:20px;}
+.card h3{font-size:15px;}
+.hint{color:var(--ink-soft);font-size:13px;line-height:1.55;margin:0 0 10px;}
+.badge{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:0.05em;text-transform:uppercase;padding:2px 7px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-soft);}
+.badge.mock{color:var(--clay);border-color:var(--clay-soft);background:var(--clay-soft);}
+.badge.user{color:var(--moss);border-color:var(--moss-soft);background:var(--moss-soft);}
+.conf{font-family:'IBM Plex Mono',monospace;font-size:9.5px;text-transform:uppercase;letter-spacing:0.05em;padding:2px 7px;border-radius:10px;}
+.conf-low{background:var(--clay-soft);color:var(--clay);}
+.conf-medium{background:var(--brass-soft);color:var(--brass);}
+.conf-high{background:var(--moss-soft);color:var(--moss);}
+.btn{background:var(--ink);color:var(--surface);border:none;border-radius:var(--radius-sm);padding:9px 14px;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+.btn:hover{background:var(--signal);}
+.btn.ghost{background:none;color:var(--signal);border:1px solid var(--line);}
+.btn.ghost:hover{background:var(--surface-2);}
+.btn.danger{background:none;color:var(--danger);border:1px solid var(--clay-soft);}
+.btn.danger:hover{background:var(--clay-soft);}
+.btn.edit{background:none;color:var(--brass);border:1px solid var(--brass-soft);}
+.btn.edit:hover{background:var(--brass-soft);}
+.btn[disabled]{opacity:0.4;cursor:not-allowed;}
+label.field-label{display:block;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--graphite);margin-bottom:4px;}
+input[type="text"],input[type="number"],select,textarea{width:100%;font-family:'IBM Plex Mono',monospace;font-size:13px;padding:8px 9px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);}
+textarea{font-family:'Source Serif 4',serif;font-size:14px;resize:vertical;min-height:64px;}
+input[type="range"]{width:100%;accent-color:var(--brass);}
+.field{margin-bottom:12px;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.chip{display:inline-flex;align-items:center;gap:6px;font-family:'Space Grotesk',sans-serif;font-size:13px;padding:6px 10px 6px 12px;border-radius:20px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);}
+.chip button{background:none;border:none;cursor:pointer;color:var(--graphite);font-size:13px;line-height:1;padding:0;}
+.chip button:hover{color:var(--danger);}
+.chip-row{display:flex;flex-wrap:wrap;gap:8px;}
+
+/* edit mode banner */
+.edit-banner{background:var(--brass-soft);border:1px solid var(--brass);border-radius:var(--radius-md);padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--brass);}
+.edit-banner b{font-family:'Space Grotesk',sans-serif;font-size:13px;}
+
+/* explore layout */
+.explore-grid{display:grid;grid-template-columns:270px 1fr 300px;gap:16px;align-items:start;}
+@media (max-width:1050px){.explore-grid{grid-template-columns:1fr;}}
+.map-wrap{position:relative;height:520px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden;}
+.map-wrap svg{width:100%;height:100%;cursor:grab;}
+.map-wrap svg:active{cursor:grabbing;}
+.map-legend{position:absolute;bottom:10px;left:10px;display:flex;flex-wrap:wrap;gap:6px;max-width:70%;}
+.legend-chip{font-family:'IBM Plex Mono',monospace;font-size:9.5px;padding:3px 8px;border-radius:10px;border:1px solid var(--line);background:rgba(249,250,246,0.9);cursor:pointer;display:flex;align-items:center;gap:5px;}
+.legend-chip .dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
+.legend-chip.off{opacity:0.35;}
+.map-hint{position:absolute;top:10px;right:10px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--graphite);background:rgba(249,250,246,0.9);padding:4px 8px;border-radius:10px;border:1px solid var(--line);}
+.map-mode-toggle{position:absolute;top:10px;left:10px;background:rgba(249,250,246,0.95);border:1px solid var(--line);border-radius:var(--radius-sm);padding:4px;display:flex;gap:4px;z-index:10;}
+.map-mode-toggle select{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 6px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);}
+.ashby-axis-controls{position:absolute;top:10px;left:10px;background:rgba(249,250,246,0.95);border:1px solid var(--line);border-radius:var(--radius-sm);padding:6px;display:flex;flex-direction:column;gap:4px;z-index:10;max-width:200px;}
+.ashby-axis-controls label{font-family:'IBM Plex Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--graphite);}
+.ashby-axis-controls select{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:3px 5px;}
+.dot{cursor:pointer;transition:r 0.1s ease;}
+.dot-label{font-family:'IBM Plex Mono',monospace;font-size:7px;pointer-events:none;fill:var(--ink-soft);}
+.tooltip-float{position:absolute;pointer-events:none;background:var(--ink);color:var(--surface);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:6px 9px;border-radius:4px;z-index:20;max-width:200px;line-height:1.4;}
+
+.results-list{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+.result-row{border:1px solid var(--line);border-radius:var(--radius-sm);padding:9px 10px;cursor:pointer;background:var(--surface);}
+.result-row:hover{background:var(--surface-2);}
+.result-row .rr-name{font-family:'Space Grotesk',sans-serif;font-size:13.5px;font-weight:600;}
+.result-row .rr-fam{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--graphite);text-transform:uppercase;}
+.result-row .rr-sim{float:right;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--brass);}
+
+.mini-card{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;}
+.mini-card svg{width:120px;height:120px;}
+.mini-card .mc-fam{font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--graphite);}
+.mini-card .mc-name{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:600;}
+.mini-tags{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:2px;}
+.mini-tags span{font-family:'IBM Plex Mono',monospace;font-size:10px;background:var(--surface-2);border:1px solid var(--line);padding:2px 7px;border-radius:10px;}
+
+/* swatch fingerprint */
+@keyframes breathe{0%,100%{transform:scale(1) rotate(0deg);}50%{transform:scale(1.02) rotate(1deg);}}
+.swatch{transform-origin:center;animation:breathe 8s ease-in-out infinite;}
+@media (prefers-reduced-motion:reduce){.swatch{animation:none;}}
+
+/* detail */
+.detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+.breadcrumb{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--graphite);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;}
+.breadcrumb b{color:var(--ink);}
+.detail-head h2{font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:700;margin:2px 0 6px;}
+.detail-grid{display:grid;grid-template-columns:220px 1fr;gap:22px;margin-top:16px;}
+@media (max-width:780px){.detail-grid{grid-template-columns:1fr;}}
+.constellation{display:flex;flex-wrap:wrap;align-items:baseline;align-content:flex-start;gap:6px 16px;min-height:150px;max-height:260px;overflow-y:auto;overflow-x:hidden;padding:16px;background:var(--surface-2);border-radius:var(--radius-sm);}
+.constellation span{font-family:'Space Grotesk',sans-serif;color:var(--ink);white-space:nowrap;cursor:pointer;line-height:1.3;max-width:100%;overflow-wrap:anywhere;}
+.constellation span:hover{color:var(--brass);}
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.table-scroll table.data-table{min-width:640px;}
+.profile-row{display:grid;grid-template-columns:110px 1fr 60px 50px;align-items:center;gap:8px;margin-bottom:10px;}
+.profile-label{font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;color:var(--ink-soft);}
+.profile-track{height:8px;border-radius:4px;background:var(--surface-2);position:relative;overflow:hidden;}
+.profile-fill{position:absolute;top:0;left:0;bottom:0;border-radius:4px;background:var(--signal);}
+.profile-val{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-soft);text-align:right;}
+.why-btn{background:none;border:1px solid var(--line);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;text-transform:uppercase;padding:2px 8px;cursor:pointer;color:var(--signal);}
+.why-btn:hover{background:var(--surface-2);}
+.why-panel{grid-column:1/-1;background:var(--surface-2);border-radius:var(--radius-sm);padding:12px 14px;margin:-4px 0 8px;font-size:13px;line-height:1.6;}
+.why-panel .wp-title{font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--graphite);margin-bottom:6px;}
+.why-panel ul{margin:4px 0;padding-left:18px;}
+.why-panel .wp-note{color:var(--ink-soft);font-style:italic;margin-top:6px;}
+
+table.data-table{width:100%;border-collapse:collapse;font-size:13px;}
+table.data-table th{text-align:left;font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:var(--graphite);border-bottom:1px solid var(--line);padding:6px 8px;}
+table.data-table td{padding:8px 8px;border-bottom:1px solid var(--line-soft);vertical-align:top;}
+table.data-table tr:hover td{background:var(--surface-2);}
+
+.process-flow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 0;}
+.process-step{background:var(--surface-2);border:1px solid var(--line);border-radius:16px;padding:5px 12px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;}
+.process-arrow{color:var(--graphite);}
+.env-grid{display:flex;gap:18px;flex-wrap:wrap;}
+.env-item{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-soft);}
+.env-item b{color:var(--ink);display:block;font-size:16px;font-family:'Space Grotesk',sans-serif;}
+.source-row{border-top:1px solid var(--line-soft);padding:8px 0;font-size:13px;}
+.source-row .sr-title{font-weight:600;}
+.source-row .sr-meta{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--graphite);}
+
+/* compare */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+@media (max-width:700px){.compare-grid{grid-template-columns:1fr;}}
+.compare-col{border:1px solid var(--line);border-radius:var(--radius-md);padding:16px;background:var(--surface);}
+.compare-select{margin-bottom:12px;}
+.compare-row{display:grid;grid-template-columns:120px 1fr;gap:8px;padding:6px 0;border-top:1px solid var(--line-soft);font-size:13px;}
+.compare-row .cr-label{font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;color:var(--graphite);}
+.delta-flag{color:var(--brass);font-family:'IBM Plex Mono',monospace;font-size:10px;margin-left:6px;}
+
+/* process explorer */
+.process-controls{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+@media (max-width:780px){.process-controls{grid-template-columns:1fr;}}
+.predict-out{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);}
+.predict-row{display:grid;grid-template-columns:90px 1fr 90px;gap:10px;align-items:center;margin-bottom:12px;}
+.predict-track{height:8px;border-radius:4px;background:var(--surface-2);position:relative;}
+.predict-dot{position:absolute;top:-3px;width:14px;height:14px;border-radius:50%;background:var(--brass);border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line);transform:translateX(-50%);}
+.predict-poles{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--graphite);text-transform:uppercase;}
+.insufficient{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--danger);background:var(--clay-soft);border-radius:var(--radius-sm);padding:10px 12px;}
+
+/* wizard */
+.wizard-steps{display:flex;gap:4px;margin-bottom:18px;flex-wrap:wrap;}
+.wizard-steps span{font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;padding:5px 10px;border-radius:12px;background:var(--surface-2);color:var(--graphite);}
+.wizard-steps span.active{background:var(--ink);color:var(--surface);}
+.wizard-steps span.done{background:var(--moss-soft);color:var(--moss);}
+.meas-row{display:grid;grid-template-columns:1.4fr 90px 90px 90px 90px 90px 28px;gap:8px;margin-bottom:8px;align-items:center;}
+.meas-row-sub{font-family:'IBM Plex Mono',monospace;font-size:9px;text-transform:uppercase;color:var(--graphite);grid-column:1/-1;margin:-4px 0 2px;}
+.step-row{display:grid;grid-template-columns:64px 1fr 28px;gap:8px;margin-bottom:8px;align-items:center;}
+.step-row .step-no{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--graphite);text-transform:uppercase;}
+.wizard-nav{display:flex;justify-content:space-between;margin-top:18px;}
+.suffix-wrap{position:relative;}
+.suffix-wrap input{padding-right:34px;}
+.suffix-wrap .suffix-label{position:absolute;right:9px;top:50%;transform:translateY(-50%);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--graphite);pointer-events:none;}
+
+/* library */
+.lib-filters{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+@media (max-width:780px){.lib-filters{grid-template-columns:1fr 1fr;}}
+.lib-actions{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.completeness-bar{width:60px;height:6px;background:var(--surface-2);border-radius:3px;display:inline-block;position:relative;overflow:hidden;vertical-align:middle;margin-right:6px;}
+.completeness-bar i{position:absolute;left:0;top:0;bottom:0;background:var(--moss);}
+
+.diagram-box{font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:2;text-align:center;color:var(--ink-soft);white-space:pre;background:var(--surface-2);border-radius:var(--radius-sm);padding:14px;}
+footer.note{margin-top:24px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--graphite);line-height:1.6;border-top:1px solid var(--line);padding-top:14px;}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="masthead">
+    <div>
+      <div class="eyebrow">Biomaterials Experience Explorer — a research instrument</div>
+      <h1>How composition, process and behaviour become material experience</h1>
+      <p>A material is not one fixed object — it is a family of possible states produced by different biological, processing and environmental conditions. Explore that space from either direction: how it feels, or how it's made.</p>
+    </div>
+    <div class="masthead-right">
+      <div class="search-box">
+        <input type="text" id="globalSearch" placeholder="Search names, descriptors, processes, sources…" autocomplete="off">
+        <div id="searchResults"></div>
+      </div>
+      <div class="eyebrow" id="libCount"></div>
+      <div class="eyebrow" id="syncStatus"></div>
+      <div class="engine-toggle">
+        <select id="engineModeSelect">
+          <option value="fast">Semantic engine: Fast</option>
+          <option value="ml">Semantic engine: Enhanced (ML)</option>
+        </select>
+      </div>
+      <div class="engine-note" id="engineNote"></div>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button data-tab="explore">Explore</button>
+    <button data-tab="detail">Material</button>
+    <button data-tab="compare">Compare</button>
+    <button data-tab="process">Process Explorer</button>
+    <button data-tab="add">Add Material</button>
+    <button data-tab="library">Library</button>
+    <button data-tab="about">About</button>
+  </nav>
+
+  <div id="app"></div>
+
+  <footer class="note">Illustrative demo dataset. Property values, descriptor associations and predictions in this prototype are mock/reference data for interface demonstration only — not laboratory measurements. All associations between experiential language and physical properties are represented as probabilistic and contextual, never as fixed definitions.</footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================= SHARED BACKEND (SUPABASE) ============================= */
+const SUPABASE_URL = 'https://hpzttcrjacnxivcqbyez.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_DIqmAxI7pVJWtyG9FccM6g_QhDV1mYX';
+const CLOUD_TABLE = 'biomat_entries';
+let cloud = null;
+let cloudStatus = 'not-configured';
+if(SUPABASE_URL.indexOf('YOUR_SUPABASE_URL')===-1 && SUPABASE_ANON_KEY.indexOf('YOUR_SUPABASE_ANON_KEY')===-1 && window.supabase){
+  try{ cloud = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); }catch(e){ cloud=null; }
+}
+async function cloudUpsert(entryType, obj){
+  if(!cloud) return;
+  try{ await cloud.from(CLOUD_TABLE).upsert({ id: obj.id, entry_type: entryType, payload: obj }); }
+  catch(e){ console.warn('cloud upsert failed', e); }
+}
+async function cloudDelete(entryType, id){
+  if(!cloud) return;
+  try{ await cloud.from(CLOUD_TABLE).delete().eq('id', id).eq('entry_type', entryType); }
+  catch(e){ console.warn('cloud delete failed', e); }
+}
+async function cloudFetchAll(){
+  if(!cloud) return null;
+  const { data, error } = await cloud.from(CLOUD_TABLE).select('*');
+  if(error) throw error;
+  return data;
+}
+
+/* ============================= SEMANTIC ENGINE ============================= */
+const DIMS = ['L','P','R','E','G','S','T','W'];
+const LEXICON = {
+  'leathery':[1,0,0.2,0,0,0.6,0,0.3],'skin-like':[0.9,0,0,0,0,0.7,0,0.4],
+  'skinlike':[0.9,0,0,0,0,0.7,0,0.4],'supple':[0.6,0,0.3,0,0,0.8,0,0.1],
+  'fleshy':[0.7,0,0,0,0,0.8,0,0.5],'hide-like':[1,0,0,0,0,0.3,0,0],
+  'papery':[0,1,0,0,0,-0.2,0.4,-0.2],'paper-like':[0,1,0,0,0,-0.2,0.4,-0.2],
+  'crisp':[0,0.8,0,0,0,-0.4,0.1,-0.3],'dry':[0,0.5,0,0,0,-0.1,0,-0.7],
+  'delicate':[0,0.6,0,0,0,0.2,0.2,0],'thin':[0,0.5,0,0,0,0,0.5,0],
+  'translucent':[0,0.2,0,0,0.3,0,1,0],'transparent':[0,0,0,0,0.4,0,1,0],
+  'semi-transparent':[0,0.2,0,0,0.2,0,0.7,0],'brittle':[0,0.7,0,0,0,-0.5,0.1,-0.2],
+  'rubbery':[0,0,1,0,0,0.5,0,0.2],'elastic':[0,0,0.9,0,0,0.3,0,0],
+  'bouncy':[0,0,0.8,0,0,0.4,0,0],'stretchy':[0,0,0.9,0,0,0.3,0,0.1],
+  'resilient':[0,0,0.6,0,0,0.2,0,0],'tacky':[0,0,0.5,0,-0.1,0.2,0,0.7],
+  'earthy':[0,0,0,1,0,0.1,0,0],'spongy':[0,0,0.3,0.6,0,0.7,-0.2,0.1],
+  'porous':[0,0.1,0,0.5,0,0.2,-0.3,0],'lightweight':[0,0.2,0,0.3,0,0.4,0,0],
+  'crumbly':[0,0.3,0,0.6,0,-0.3,0,0],'cork-like':[0,0.1,0,0.7,0,0.2,0,0],
+  'dense':[0,0,0,0.4,0,-0.5,-0.3,0],'matte':[0,0.1,0,0.1,-0.6,0,0,0],
+  'rigid':[0,0.2,-0.3,0,0,-0.8,0,0],'glossy':[0,0,0,0,1,0.2,0.3,0],
+  'shiny':[0,0,0,0,0.8,0.1,0.2,0],'smooth':[0,0,0.1,0,0.6,0.4,0,0],
+  'slippery':[0,0,0,0,0.7,0.1,0,0.3],'waxy':[0.2,0,0,0,0.5,0.1,0,0.4],
+  'crinkly':[0,0.6,0,0,0,-0.2,0.2,0],'pliable':[0,0,0.5,0,0,0.6,0,0.1],
+  'warm':[0,0,0,0,0,0.2,0,0.7],'clammy':[0,0,0,0,0,0.3,0,0.6],
+  'strange':[0,0,0,0,0,0,0,0],'organic':[0,0,0,0.4,0,0.1,0,0],
+  'fibrous':[0,0.3,0,0.3,0,0,0,0],'floppy':[0,0.1,0.2,0,0,0.7,0,0.1],
+  'soft':[0,0,0,0,0,1,0,0],'flexible':[0,0,0.6,0,0,0.5,0,0],
+  'stiff':[0,0.2,-0.4,0,0,-0.8,0,0],'opaque':[0,0,0,0,0.1,0,-0.8,0],
+  'hard':[0,0,-0.3,0,0,-0.9,0,0],'glassy':[0,0,0,0,0.8,-0.6,0.5,0],
+  'crackly':[0,0.5,0,0,0,-0.6,0,0],'velvety':[0.3,0,0,0,0,0.8,0,0.2],
+  'rough':[0,0.2,0,0.3,-0.5,-0.3,0,0],'cold':[0,0,0,0,0,0,0,-0.9],
+  'wet-feeling':[0,0,0,0,0.2,0.2,0,0.9],'moist':[0,0,0,0,0,0.2,0,0.7],
+  'biological':[0,0,0,0.5,0,0.1,0,0.1],'uncanny':[0.3,0,0,0,0,0.1,0,0.2],
+  'wet paper':[0,0.7,0,0.1,0,0,0.3,0.5],'dried skin':[0.6,0.3,0,0,0,-0.1,0,-0.4],
+  'onion skin':[0,0.4,0,0,0.2,0,0.8,0],'onion paper':[0,0.5,0,0,0.2,0,0.7,0],
+  'wet cardboard':[0,0.6,0,0.2,0,0.1,0,0.4],'ice':[0,0,0,0,0.4,0,0.9,-0.7],
+  'leaf':[0,0.3,0,0.5,0,0.1,0.2,0]
+};
+const DIMENSION_KEYWORDS = [
+  ['moisture',['wet','dry','damp','clammy','moist']],
+  ['thermal',['warm','cool','cold','insulating']],
+  ['acoustic',['crinkly','crackly','rustly','squeaky']],
+  ['olfactory',['musty','earthy-smelling','smells']],
+  ['temporal',['ages','degrades','yellows','over time']],
+  ['visual',['translucent','opaque','glossy','matte','transparent','shiny','dull','colour','color']],
+  ['mechanical',['brittle','rigid','stiff','flexible','crackly','hard','crisp','tough','elastic','stretchy','bouncy']],
+  ['conceptual',['strange','organic','biological','alien','uncanny']],
+];
+function hashStr(str){let h=0;for(let i=0;i<str.length;i++){h=(h*31+str.charCodeAt(i))>>>0;}return h;}
+function hashVec(str){
+  let seed=hashStr(str);
+  const out=[];
+  for(let i=0;i<8;i++){seed=(seed*1103515245+12345)>>>0;out.push(((seed%1000)/1000-0.5)*0.5);}
+  return out;
+}
+function normalizeWord(w){return w.toLowerCase().trim().replace(/[.,!?;:'"]/g,'');}
+
+const ML_MODEL_ID = 'Xenova/all-MiniLM-L6-v2';
+const MLEngine = {
+  status:'idle',pipelinePromise:null,cache:{},
+  async ensureLoaded(){
+    if(this.status==='ready') return true;
+    if(this.status==='loading') return this.pipelinePromise.then(()=>this.status==='ready').catch(()=>false);
+    this.status='loading';
+    this.pipelinePromise=(async()=>{
+      const mod=await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
+      this.extractor=await mod.pipeline('feature-extraction',ML_MODEL_ID);
+      this.status='ready';
+    })();
+    try{await this.pipelinePromise;return true;}
+    catch(e){console.warn('ML semantic engine failed to load',e);this.status='error';return false;}
+  },
+  async embed(text){
+    const norm=text.toLowerCase().trim();
+    if(this.cache[norm]) return this.cache[norm];
+    if(this.status!=='ready') return null;
+    const out=await this.extractor(norm,{pooling:'mean',normalize:true});
+    const vec=Array.from(out.data);
+    this.cache[norm]=vec;
+    return vec;
+  },
+  async embedAll(texts){
+    const todo=Array.from(new Set(texts.map(t=>t.toLowerCase().trim()))).filter(t=>t&&!this.cache[t]);
+    for(const t of todo){await this.embed(t);}
+  }
+};
+
+const SemanticEngine = {
+  embed(text){
+    const norm=text.toLowerCase().trim();
+    if(LEXICON[norm]) return LEXICON[norm].slice();
+    const words=norm.split(/\s+/).filter(Boolean);
+    if(words.length===0) return [0,0,0,0,0,0,0,0];
+    let sum=[0,0,0,0,0,0,0,0];let count=0;
+    words.forEach(w=>{
+      const nw=normalizeWord(w);
+      let vec=LEXICON[nw];
+      if(!vec){const match=Object.keys(LEXICON).find(k=>k.indexOf(nw)>=0||nw.indexOf(k)>=0);vec=match?LEXICON[match]:hashVec(nw);}
+      sum=sum.map((v,i)=>v+vec[i]);count++;
+    });
+    return sum.map(v=>v/count);
+  },
+  semanticEmbed(text){
+    const norm=text.toLowerCase().trim();
+    if(state.engineMode==='ml'&&MLEngine.cache[norm]) return MLEngine.cache[norm];
+    return this.embed(text);
+  },
+  similarity(a,b){
+    const n=Math.min(a.length,b.length);
+    let dot=0,na=0,nb=0;
+    for(let i=0;i<n;i++){dot+=a[i]*b[i];na+=a[i]*a[i];nb+=b[i]*b[i];}
+    if(na===0||nb===0) return 0;
+    return dot/(Math.sqrt(na)*Math.sqrt(nb));
+  },
+  cluster(descriptorTexts){
+    const uniq=Array.from(new Set(descriptorTexts.map(t=>t.toLowerCase().trim()))).filter(Boolean);
+    if(uniq.length===0) return {};
+    if(uniq.length===1) return {[uniq[0]]:uniq};
+    const vecs=uniq.map(t=>this.semanticEmbed(t));
+    const k=Math.max(2,Math.min(6,Math.round(Math.sqrt(uniq.length/1.4))));
+    const {assignments}=kmeans(vecs,k,uniq.join('|'));
+    const rawGroups={};
+    uniq.forEach((t,i)=>{const key=assignments[i];(rawGroups[key]=rawGroups[key]||[]).push(t);});
+    const labeled={};
+    Object.values(rawGroups).forEach(members=>{
+      if(members.length===1){labeled[members[0]]=members;return;}
+      const memberVecs=members.map(m=>this.semanticEmbed(m));
+      const dims=memberVecs[0].length;
+      const centroid=new Array(dims).fill(0);
+      memberVecs.forEach(v=>v.forEach((val,d)=>centroid[d]+=val/memberVecs.length));
+      let repIdx=0,bd=Infinity;
+      memberVecs.forEach((v,i)=>{const dd=euclid(v,centroid);if(dd<bd){bd=dd;repIdx=i;}});
+      labeled[members[repIdx]+' group']=members;
+    });
+    return labeled;
+  },
+  classify(text){
+    const t=text.toLowerCase();
+    for(const [dim,kws] of DIMENSION_KEYWORDS){if(kws.some(k=>t.indexOf(k)>=0)) return dim;}
+    return 'tactile';
+  }
+};
+
+function euclid(a,b){let s=0;for(let i=0;i<a.length;i++){const d=a[i]-b[i];s+=d*d;}return Math.sqrt(s);}
+
+function kmeans(vectors,k,seedStr){
+  k=Math.max(1,Math.min(k,vectors.length));
+  let centroids=[vectors[0].slice()];
+  while(centroids.length<k){
+    let best=vectors[0],bestDist=-1;
+    vectors.forEach(v=>{const d=Math.min(...centroids.map(c=>euclid(v,c)));if(d>bestDist){bestDist=d;best=v;}});
+    centroids.push(best.slice());
+  }
+  let assignments=new Array(vectors.length).fill(0);
+  for(let iter=0;iter<25;iter++){
+    assignments=vectors.map(v=>{
+      let bi=0,bd=Infinity;
+      centroids.forEach((c,ci)=>{const dd=euclid(v,c);if(dd<bd){bd=dd;bi=ci;}});
+      return bi;
+    });
+    const dims=vectors[0].length;
+    const sums=Array.from({length:k},()=>new Array(dims).fill(0));
+    const counts=new Array(k).fill(0);
+    vectors.forEach((v,i)=>{counts[assignments[i]]++;v.forEach((val,d)=>sums[assignments[i]][d]+=val);});
+    centroids=sums.map((s,ci)=>counts[ci]>0?s.map(x=>x/counts[ci]):centroids[ci]);
+  }
+  return {assignments,centroids};
+}
+
+function computePCA2D(vectors){
+  const n=vectors.length;
+  if(n===0) return [];
+  if(n===1) return [{x:0,y:0}];
+  const d=vectors[0].length;
+  const mean=new Array(d).fill(0);
+  vectors.forEach(v=>v.forEach((val,i)=>mean[i]+=val/n));
+  const X=vectors.map(v=>v.map((val,i)=>val-mean[i]));
+  const G=[];
+  for(let i=0;i<n;i++){G.push(new Array(n).fill(0));for(let j=0;j<n;j++){let s=0;for(let kk=0;kk<d;kk++) s+=X[i][kk]*X[j][kk];G[i][j]=s;}}
+  function powerIter(mat,deflate){
+    let v=new Array(n).fill(0).map((_,i)=>Math.sin(i*1.37+1)+0.6);
+    for(let iter=0;iter<120;iter++){
+      let w=new Array(n).fill(0);
+      for(let i=0;i<n;i++){let s=0;for(let j=0;j<n;j++) s+=mat[i][j]*v[j];w[i]=s;}
+      deflate.forEach(pv=>{let dot=0;for(let i=0;i<n;i++) dot+=w[i]*pv[i];for(let i=0;i<n;i++) w[i]-=dot*pv[i];});
+      const norm=Math.sqrt(w.reduce((a,b)=>a+b*b,0))||1;
+      v=w.map(x=>x/norm);
+    }
+    let Gv=new Array(n).fill(0);
+    for(let i=0;i<n;i++){let s=0;for(let j=0;j<n;j++) s+=mat[i][j]*v[j];Gv[i]=s;}
+    let val=0;for(let i=0;i<n;i++) val+=v[i]*Gv[i];
+    return {vec:v,val:Math.max(val,1e-9)};
+  }
+  const {vec:u1,val:e1}=powerIter(G,[]);
+  const {vec:u2,val:e2}=powerIter(G,[u1]);
+  const c1=u1.map(x=>x*Math.sqrt(e1)),c2=u2.map(x=>x*Math.sqrt(e2));
+  return vectors.map((_,i)=>({x:c1[i],y:c2[i]}));
+}
+
+/* ============================= PROPERTY CATALOG (units + scaling) ============================= */
+// Each unit has toBase: multiplier to convert a value in that unit to the property's base (SI) unit.
+// NOTE: legacy demo-data properties (Density, Compressive Strength, etc.) are kept here so existing
+// seed/library entries still resolve correct units and Ashby-axis labels. They are intentionally
+// EXCLUDED from INSTRUMENT_PROPERTY_GROUPS below, so new measurements can only be logged against the
+// two lab instruments actually in use.
+const PROPERTY_CATALOG = [
+  {name:'Biodegradation Rate',category:'Degradation',baseUnit:'%/day',units:[{unit:'%/day',toBase:1},{unit:'%/week',toBase:1/7}]},
+  {name:'Coefficient of Friction',category:'Surface',baseUnit:'',units:[]},
+  {name:'Color Difference (ΔE)',category:'Optical',baseUnit:'ΔE',units:[{unit:'ΔE',toBase:1}]},
+  {name:'Compressive Strength',category:'Mechanical',baseUnit:'Pa',units:[{unit:'Pa',toBase:1},{unit:'kPa',toBase:1e3},{unit:'MPa',toBase:1e6},{unit:'GPa',toBase:1e9}]},
+  {name:'Contact Angle',category:'Surface',baseUnit:'°',units:[{unit:'°',toBase:1}]},
+  {name:'Degradation Temperature',category:'Thermal',baseUnit:'°C',units:[{unit:'°C',toBase:1},{unit:'K',toBase:1}]},
+  {name:'Density',category:'Physical',baseUnit:'g/cm³',units:[{unit:'g/cm³',toBase:1},{unit:'kg/m³',toBase:0.001}]},
+  {name:'Areal Density',category:'Physical',baseUnit:'g/m²',units:[{unit:'g/m²',toBase:1},{unit:'kg/m²',toBase:1000}]},
+  {name:'Elongation at Break',category:'Tensile (Mecmesin Omnitest 5)',baseUnit:'%',units:[{unit:'%',toBase:1}]},
+  {name:'Flexural Modulus',category:'Mechanical',baseUnit:'Pa',units:[{unit:'Pa',toBase:1},{unit:'kPa',toBase:1e3},{unit:'MPa',toBase:1e6},{unit:'GPa',toBase:1e9}]},
+  {name:'Flexural Strength',category:'Mechanical',baseUnit:'Pa',units:[{unit:'Pa',toBase:1},{unit:'kPa',toBase:1e3},{unit:'MPa',toBase:1e6},{unit:'GPa',toBase:1e9}]},
+  {name:'Glass Transition Temperature',category:'Thermal',baseUnit:'°C',units:[{unit:'°C',toBase:1},{unit:'K',toBase:1}]},
+  {name:'Gloss',category:'Optical',baseUnit:'GU',units:[{unit:'GU',toBase:1}]},
+  {name:'Haze',category:'Optical',baseUnit:'%',units:[{unit:'%',toBase:1}]},
+  {name:'Hardness (Shore A)',category:'Mechanical',baseUnit:'Shore A',units:[{unit:'Shore A',toBase:1}]},
+  {name:'Hardness (Shore D)',category:'Mechanical',baseUnit:'Shore D',units:[{unit:'Shore D',toBase:1}]},
+  {name:'Melting Temperature',category:'Thermal',baseUnit:'°C',units:[{unit:'°C',toBase:1},{unit:'K',toBase:1}]},
+  {name:'Moisture Content',category:'Moisture',baseUnit:'%',units:[{unit:'%',toBase:1}]},
+  {name:'Optical Transmittance',category:'Optical',baseUnit:'%',units:[{unit:'%',toBase:1}]},
+  {name:'Oxygen Transmission Rate',category:'Barrier',baseUnit:'cc/m²/day',units:[{unit:'cc/m²/day',toBase:1}]},
+  {name:'pH',category:'Chemical',baseUnit:'',units:[]},
+  {name:'Porosity',category:'Physical',baseUnit:'%',units:[{unit:'%',toBase:1}]},
+  {name:'Surface Roughness',category:'Surface',baseUnit:'µm',units:[{unit:'nm',toBase:0.001},{unit:'µm',toBase:1}]},
+  {name:'Swelling Ratio',category:'Moisture',baseUnit:'%',units:[{unit:'%',toBase:1}]},
+  {name:'Tensile Strength',category:'Mechanical',baseUnit:'Pa',units:[{unit:'Pa',toBase:1},{unit:'kPa',toBase:1e3},{unit:'MPa',toBase:1e6},{unit:'GPa',toBase:1e9}]},
+  {name:'Thermal Conductivity',category:'Thermal',baseUnit:'W/m·K',units:[{unit:'mW/m·K',toBase:0.001},{unit:'W/m·K',toBase:1}]},
+  {name:'Thickness',category:'Physical',baseUnit:'mm',units:[{unit:'µm',toBase:0.001},{unit:'mm',toBase:1},{unit:'cm',toBase:10}]},
+  {name:"Water Absorption",category:'Moisture',baseUnit:'%',units:[{unit:'%',toBase:1}]},
+  {name:'Water Solubility',category:'Moisture',baseUnit:'%',units:[{unit:'%',toBase:1}]},
+  {name:'Water Vapor Transmission Rate',category:'Moisture',baseUnit:'g/m²/day',units:[{unit:'g/m²/day',toBase:1}]},
+  {name:"Young's Modulus",category:'Tensile (Mecmesin Omnitest 5)',baseUnit:'Pa',units:[{unit:'Pa',toBase:1},{unit:'kPa',toBase:1e3},{unit:'MPa',toBase:1e6},{unit:'GPa',toBase:1e9}]},
+  // ---- Mecmesin Omnitest 5 (tensile) ----
+  {name:'Yield Strength',category:'Tensile (Mecmesin Omnitest 5)',baseUnit:'Pa',units:[{unit:'Pa',toBase:1},{unit:'kPa',toBase:1e3},{unit:'MPa',toBase:1e6},{unit:'GPa',toBase:1e9}]},
+  {name:'Ultimate Tensile Strength',category:'Tensile (Mecmesin Omnitest 5)',baseUnit:'Pa',units:[{unit:'Pa',toBase:1},{unit:'kPa',toBase:1e3},{unit:'MPa',toBase:1e6},{unit:'GPa',toBase:1e9}]},
+  // ---- SDL Atlas Fabric Touch Tester (units per FTT_Index_Report_Ens1_177A_178B.xlsx) ----
+  {name:'BARa',category:'Bending (FTT)',baseUnit:'gf·mm/rad',units:[{unit:'gf·mm/rad',toBase:1}]},
+  {name:'BARe',category:'Bending (FTT)',baseUnit:'gf·mm/rad',units:[{unit:'gf·mm/rad',toBase:1}]},
+  {name:'BWa',category:'Bending (FTT)',baseUnit:'gf·mm·rad',units:[{unit:'gf·mm·rad',toBase:1}]},
+  {name:'BWe',category:'Bending (FTT)',baseUnit:'gf·mm·rad',units:[{unit:'gf·mm·rad',toBase:1}]},
+  {name:'T',category:'Compression (FTT)',baseUnit:'mm',units:[{unit:'mm',toBase:1}]},
+  {name:'CW',category:'Compression (FTT)',baseUnit:'gf·mm',units:[{unit:'gf·mm',toBase:1}]},
+  {name:'CRR',category:'Compression (FTT)',baseUnit:'',units:[]},
+  {name:'CAR',category:'Compression (FTT)',baseUnit:'gf/(cm²·mm)',units:[{unit:'gf/(cm²·mm)',toBase:1}]},
+  {name:'RAR',category:'Compression (FTT)',baseUnit:'gf/(cm²·mm)',units:[{unit:'gf/(cm²·mm)',toBase:1}]},
+  {name:'TCC',category:'Heat Flux (FTT)',baseUnit:'W·mm/(m²·°C)',units:[{unit:'W·mm/(m²·°C)',toBase:1}]},
+  {name:'TCR',category:'Heat Flux (FTT)',baseUnit:'W·mm/(m²·°C)',units:[{unit:'W·mm/(m²·°C)',toBase:1}]},
+  {name:'Qmax',category:'Heat Flux (FTT)',baseUnit:'W/m²',units:[{unit:'W/m²',toBase:1}]},
+  {name:'SFCa',category:'Friction (FTT)',baseUnit:'',units:[]},
+  {name:'SFCe',category:'Friction (FTT)',baseUnit:'',units:[]},
+  {name:'SRAa',category:'Roughness (FTT)',baseUnit:'µm',units:[{unit:'µm',toBase:1}]},
+  {name:'SRAe',category:'Roughness (FTT)',baseUnit:'µm',units:[{unit:'µm',toBase:1}]},
+  {name:'SRWa',category:'Roughness (FTT)',baseUnit:'mm',units:[{unit:'mm',toBase:1}]},
+  {name:'SRWe',category:'Roughness (FTT)',baseUnit:'mm',units:[{unit:'mm',toBase:1}]},
+  {name:'Smoothness',category:'Sensory Index (FTT)',baseUnit:'',units:[]},
+  {name:'Softness',category:'Sensory Index (FTT)',baseUnit:'',units:[]},
+  {name:'Warmness',category:'Sensory Index (FTT)',baseUnit:'',units:[]},
+  {name:'Total',category:'Sensory Index (FTT)',baseUnit:'',units:[]}
+].sort((a,b)=>a.name.localeCompare(b.name));
+// The ONLY properties selectable when logging a new measurement — everything obtainable on the
+// Mecmesin Omnitest 5 or the SDL Atlas Fabric Touch Tester, grouped for the dropdown.
+const INSTRUMENT_PROPERTY_GROUPS=[
+  {group:'Mecmesin Omnitest 5 — Tensile',items:[
+    {name:"Young's Modulus",label:"Young's Modulus (Stiffness)"},
+    {name:'Yield Strength',label:'Yield Strength (Elastic limit)'},
+    {name:'Ultimate Tensile Strength',label:'Ultimate Tensile Strength (Max load)'},
+    {name:'Elongation at Break',label:'Elongation at Break (Ductility)'}
+  ]},
+  {group:'SDL Atlas FTT — Bending',items:[
+    {name:'BARa',label:'BARa — Bending Rigidity (warp)'},
+    {name:'BARe',label:'BARe — Bending Rigidity (weft)'},
+    {name:'BWa',label:'BWa — Bending Work (warp)'},
+    {name:'BWe',label:'BWe — Bending Work (weft)'}
+  ]},
+  {group:'SDL Atlas FTT — Compression',items:[
+    {name:'T',label:'T — Thickness (under compression)'},
+    {name:'CW',label:'CW — Compression Work'},
+    {name:'CRR',label:'CRR — Compression Recovery Rate'},
+    {name:'CAR',label:'CAR — Compression Average Rigidity'},
+    {name:'RAR',label:'RAR — Recovery ratio (compression)'}
+  ]},
+  {group:'SDL Atlas FTT — Heat Flux',items:[
+    {name:'TCC',label:'TCC — Thermal Contact Coefficient'},
+    {name:'TCR',label:'TCR — Thermal Contact Rate'},
+    {name:'Qmax',label:'Qmax — Peak Heat Flow (warm–cool feel)'}
+  ]},
+  {group:'SDL Atlas FTT — Friction',items:[
+    {name:'SFCa',label:'SFCa — Surface Friction Coefficient (warp)'},
+    {name:'SFCe',label:'SFCe — Surface Friction Coefficient (weft)'}
+  ]},
+  {group:'SDL Atlas FTT — Roughness',items:[
+    {name:'SRAa',label:'SRAa — Surface Roughness Amplitude (warp)'},
+    {name:'SRAe',label:'SRAe — Surface Roughness Amplitude (weft)'},
+    {name:'SRWa',label:'SRWa — Surface Roughness Wavelength (warp)'},
+    {name:'SRWe',label:'SRWe — Surface Roughness Wavelength (weft)'}
+  ]},
+  {group:'SDL Atlas FTT — Primary Sensory Indices',items:[
+    {name:'Smoothness',label:'Smoothness (sensory index)'},
+    {name:'Softness',label:'Softness (sensory index)'},
+    {name:'Warmness',label:'Warmness (sensory index)'},
+    {name:'Total',label:'Total Handle Value (sensory index)'}
+  ]}
+];
+const INSTRUMENT_PROPERTY_NAMES=INSTRUMENT_PROPERTY_GROUPS.flatMap(g=>g.items.map(it=>it.name));
+function catalogEntry(propName){
+  return PROPERTY_CATALOG.find(p=>p.name.toLowerCase()===String(propName||'').toLowerCase());
+}
+function unitsForProperty(propName){
+  const e=catalogEntry(propName);
+  return e?e.units:[];
+}
+function toBaseValue(value,unit,propName){
+  if(value==null||value==='') return null;
+  const e=catalogEntry(propName);
+  if(!e) return Number(value);
+  const u=e.units.find(x=>x.unit===unit);
+  return Number(value)*(u?u.toBase:1);
+}
+
+/* ============================= SEED DATA ============================= */
+const FAMILY_COLORS={f1:'#B4823C',f2:'#375A73',f3:'#5C6E4E',f4:'#9A5B3C',f5:'#6B7670',f6:'#7A5C8C'};
+const FAMILIES=[
+  {id:'f1',name:'Bacterial Cellulose',origin:'Symbiotic culture of bacteria and yeast (SCOBY)',matClass:'Biopolymer film / pellicle',desc:'A pellicle of cellulose nanofibrils grown at a liquid–air interface. Behaviour changes dramatically with drying method and thickness.'},
+  {id:'f2',name:'Mycelium Composite',origin:'Fungal mycelium grown through agricultural substrate',matClass:'Fibrous biocomposite / foam',desc:'A self-binding foam or panel formed by fungal hyphae colonizing a lignocellulosic substrate, then heat-arrested.'},
+  {id:'f3',name:'Alginate Film',origin:'Extracted from brown seaweed (alginic acid)',matClass:'Hydrocolloid film',desc:'A cast film formed by cross-linking alginate, typically with calcium ions. Highly sensitive to plasticizer content.'},
+  {id:'f4',name:'Chitosan Film',origin:'Deacetylated chitin, often from crustacean shell waste',matClass:'Polysaccharide film',desc:'A cast biopolymer film with variable transparency and stiffness depending on drying and plasticization.'},
+  {id:'f5',name:'Starch-Based Bioplastic',origin:'Plant starch (e.g. corn, potato, cassava)',matClass:'Thermoplastic biopolymer',desc:'A cast or extruded biopolymer whose flexibility depends almost entirely on plasticizer (typically glycerol) content.'},
+  {id:'f6',name:'Agar-Based Biomaterial',origin:'Extracted from red algae',matClass:'Hydrocolloid gel / film',desc:'A gel-cast material that ranges from a thin, glassy dried film to a thicker, rubbery sheet depending on drying extent.'}
+];
+
+let vSeq=1,mSeq=1,oSeq=1;
+function vid(){return 'v'+(vSeq++);}
+function midg(){return 'm'+(mSeq++);}
+function oid(){return 'o'+(oSeq++);}
+
+function makeVariant(famId,name,recipe,specimen,descriptors,measurements,sources,notes){
+  const id=vid();
+  const obs=descriptors.map(text=>({id:oid(),variantId:id,text,normalized:text.toLowerCase(),dimension:SemanticEngine.classify(text),confidence:'medium',source:sources[0]||'Demo dataset (illustrative)'}));
+  const meas=measurements.map(m=>({id:midg(),variantId:id,...m}));
+  return{id,familyId:famId,name,recipe,specimen,observations:obs,measurements:meas,sources,notes:notes||'',mock:true,createdAt:Date.now()};
+}
+
+const VARIANTS=[
+  makeVariant('f1','Air-dried · 0.8 mm',
+    {sequence:['Cultivate','Harvest','Wash','Press','Air dry'],dryingMethod:'Air dry',dryingTemp:'22°C',dryingHumidity:'45–50% RH',cultivationPeriod:'10–14 days',chemicalSteps:[],surfaceTreatment:'None',coating:'None'},
+    {thickness:0.8,wetThickness:14,density:0.35,arealDensity:280,porosity:'Low–moderate',moistureContent:'8–10%'},
+    ['papery','translucent','delicate','slightly leathery','dry','crisp'],
+    [{property:'Tensile Strength',unit:'MPa',min:42,max:58,category:'Mechanical',confidence:'medium',method:'Tensile test, ASTM D882 (mock)',source:'Demo dataset (illustrative)'},{property:'Elongation at Break',unit:'%',min:3,max:6,category:'Mechanical',confidence:'low',method:'Tensile test (mock)',source:'Demo dataset (illustrative)'},{property:'Optical Transmittance',unit:'%',min:null,max:null,text:'Moderate — reads paper-to-parchment',category:'Optical',confidence:'medium',method:'Visual assessment (mock)',source:'Demo dataset (illustrative)'}],
+    ['Demo dataset (illustrative)'],'Baseline thin, air-dried pellicle — the reference case for the family.'),
+  makeVariant('f1','Air-dried · 2.4 mm',
+    {sequence:['Cultivate','Harvest','Wash','Press','Air dry'],dryingMethod:'Air dry',dryingTemp:'22°C',dryingHumidity:'45–50% RH',cultivationPeriod:'10–14 days',chemicalSteps:[],surfaceTreatment:'None',coating:'None'},
+    {thickness:2.4,wetThickness:32,density:0.42,arealDensity:820,porosity:'Low',moistureContent:'7–9%'},
+    ['stiff','opaque','papery','brittle at edges','substantial'],
+    [{property:'Tensile Strength',unit:'MPa',min:30,max:44,category:'Mechanical',confidence:'medium',method:'Tensile test (mock)',source:'Demo dataset (illustrative)'},{property:'Flexural Modulus',unit:'GPa',min:1.1,max:1.6,category:'Bending',confidence:'low',method:'3-point bend (mock)',source:'Demo dataset (illustrative)'}],
+    ['Demo dataset (illustrative)'],'Same drying method as the 0.8 mm variant, but thickness alone changes the felt experience considerably.'),
+  makeVariant('f1','Freeze-dried · 4 mm',
+    {sequence:['Cultivate','Harvest','Wash','Freeze','Freeze-dry'],dryingMethod:'Freeze dry',dryingTemp:'-40°C → 20°C',dryingHumidity:'N/A (vacuum)',cultivationPeriod:'10–14 days',chemicalSteps:[],surfaceTreatment:'None',coating:'None'},
+    {thickness:4.0,wetThickness:34,density:0.09,arealDensity:360,porosity:'High',moistureContent:'5–7%'},
+    ['porous','lightweight','soft','spongy','matte','crumbly at edges'],
+    [{property:'Density',unit:'g/cm³',min:0.07,max:0.11,category:'Physical',confidence:'medium',method:'Mass/volume (mock)',source:'Demo dataset (illustrative)'},{property:'Compressive Strength',unit:'kPa',min:8,max:20,category:'Mechanical',confidence:'low',method:'Compression test (mock)',source:'Demo dataset (illustrative)'}],
+    ['Demo dataset (illustrative)'],'Ice-templated porosity from sublimation gives a very different tactile register from air drying.'),
+  makeVariant('f1','Glycerol-treated · 1.2 mm',
+    {sequence:['Cultivate','Harvest','Wash','Soak in glycerol','Press','Air dry'],dryingMethod:'Air dry',dryingTemp:'22°C',dryingHumidity:'45–50% RH',cultivationPeriod:'10–14 days',chemicalSteps:["15% glycerol soak for 24 hrs"],surfaceTreatment:'None',coating:'None'},
+    {thickness:1.2,wetThickness:16,density:0.38,arealDensity:450,porosity:'Low',moistureContent:'11–14%'},
+    ['leathery','supple','flexible','slightly tacky','skin-like','warm'],
+    [{property:'Tensile Strength',unit:'MPa',min:20,max:34,category:'Mechanical',confidence:'medium',method:'Tensile test (mock)',source:'Demo dataset (illustrative)'},{property:'Elongation at Break',unit:'%',min:14,max:22,category:'Mechanical',confidence:'medium',method:'Tensile test (mock)',source:'Demo dataset (illustrative)'},{property:'Water Absorption',unit:'%',min:18,max:26,category:'Moisture',confidence:'low',method:'Immersion test (mock)',source:'Demo dataset (illustrative)'}],
+    ['Demo dataset (illustrative)'],'Plasticization is the clearest single lever for moving this family toward a leather-like register.'),
+  makeVariant('f2','Foam-dried block',
+    {sequence:['Inoculate substrate','Incubate','Demold','Heat-arrest (dry)'],dryingMethod:'Low-heat oven dry',dryingTemp:'60°C',dryingHumidity:'Ambient',cultivationPeriod:'10–12 days incubation',chemicalSteps:[],surfaceTreatment:'None',coating:'None'},
+    {thickness:30,density:0.15,arealDensity:null,porosity:'High',moistureContent:'4–6%'},
+    ['spongy','earthy','soft','crumbly','matte','organic'],
+    [{property:'Density',unit:'g/cm³',min:0.1,max:0.2,category:'Physical',confidence:'medium',method:'Mass/volume (mock)',source:'Demo dataset (illustrative)'},{property:'Thermal Conductivity',unit:'W/m·K',min:0.05,max:0.08,category:'Thermal',confidence:'low',method:'Guarded hot plate (mock)',source:'Demo dataset (illustrative)'}],
+    ['Demo dataset (illustrative)'],'Uncompressed block form — the loosest, most foam-like state in the family.'),
+  makeVariant('f2','Compressed panel',
+    {sequence:['Inoculate substrate','Incubate','Compress (hot press)','Heat-arrest (dry)'],dryingMethod:'Hot press',dryingTemp:'110°C',dryingHumidity:'N/A',cultivationPeriod:'10–12 days incubation',chemicalSteps:[],surfaceTreatment:'Sanded',coating:'None'},
+    {thickness:6,density:0.55,arealDensity:3300,porosity:'Low–moderate',moistureContent:'5%'},
+    ['dense','cork-like','matte','rigid','warm to the touch'],
+    [{property:'Density',unit:'g/cm³',min:0.45,max:0.62,category:'Physical',confidence:'medium',method:'Mass/volume (mock)',source:'Demo dataset (illustrative)'},{property:'Flexural Strength',unit:'MPa',min:1.2,max:2.4,category:'Bending',confidence:'low',method:'3-point bend (mock)',source:'Demo dataset (illustrative)'}],
+    ['Demo dataset (illustrative)'],'Compression collapses the foam structure into something closer to cork or particleboard.'),
+  makeVariant('f3','Cast thin film',
+    {sequence:['Dissolve alginate','Cast','Cross-link (CaCl₂ bath)','Air dry'],dryingMethod:'Air dry',dryingTemp:'21°C',dryingHumidity:'40% RH',cultivationPeriod:'N/A (extracted feedstock)',chemicalSteps:["2% calcium chloride cross-link bath for 5 min"],surfaceTreatment:'None',coating:'None'},
+    {thickness:0.15,density:1.2,arealDensity:180,porosity:'Very low',moistureContent:'9%'},
+    ['glossy','brittle','translucent','slippery when wet','crackly when dry'],
+    [{property:'Tensile Strength',unit:'MPa',min:25,max:40,category:'Mechanical',confidence:'low',method:'Tensile test (mock)',source:'Demo dataset (illustrative)'}],
+    ['Demo dataset (illustrative)'],'Unplasticized alginate reads glassy and brittle — a useful contrast case.'),
+  makeVariant('f3','Glycerol-plasticized film',
+    {sequence:['Dissolve alginate','Add glycerol','Cast','Cross-link','Air dry'],dryingMethod:'Air dry',dryingTemp:'21°C',dryingHumidity:'40% RH',cultivationPeriod:'N/A (extracted feedstock)',chemicalSteps:["2% calcium chloride cross-link bath for 5 min","10% glycerol soak for 12 hrs"],surfaceTreatment:'None',coating:'None'},
+    {thickness:0.3,density:1.1,arealDensity:330,porosity:'Very low',moistureContent:'14%'},
+    ['flexible','rubbery','tacky','translucent','cool'],
+    [{property:'Elongation at Break',unit:'%',min:30,max:48,category:'Mechanical',confidence:'low',method:'Tensile test (mock)',source:'Demo dataset (illustrative)'}],
+    ['Demo dataset (illustrative)'],'Plasticizer shifts alginate from glassy to rubbery — mirrors the pattern seen across several families.'),
+  makeVariant('f4','Air-dried thin film',
+    {sequence:['Dissolve chitosan','Cast','Air dry'],dryingMethod:'Air dry',dryingTemp:'23°C',dryingHumidity:'50% RH',cultivationPeriod:'N/A (extracted feedstock)',chemicalSteps:["1% acetic acid solvent cast"],surfaceTreatment:'None',coating:'None'},
+    {thickness:0.05,density:1.3,arealDensity:65,porosity:'Very low',moistureContent:'10%'},
+    ['crinkly','semi-transparent','papery','slightly waxy'],
+    [{property:'Tensile Strength',unit:'MPa',min:35,max:50,category:'Mechanical',confidence:'medium',method:'Tensile test (mock)',source:'Demo dataset (illustrative)'}],
+    ['Demo dataset (illustrative)'],'Very thin cast film — closer to a coating than a standalone sheet.'),
+  makeVariant('f4','Plasticized sheet',
+    {sequence:['Dissolve chitosan','Add glycerol','Cast','Air dry'],dryingMethod:'Air dry',dryingTemp:'23°C',dryingHumidity:'50% RH',cultivationPeriod:'N/A (extracted feedstock)',chemicalSteps:["1% acetic acid solvent cast","15% glycerol addition"],surfaceTreatment:'None',coating:'None'},
+    {thickness:0.2,density:1.25,arealDensity:250,porosity:'Very low',moistureContent:'15%'},
+    ['pliable','smooth','leathery-ish','slightly tacky'],
+    [],['Demo dataset (illustrative)'],'Plasticization again moves chitosan toward a leather-adjacent register.'),
+  makeVariant('f5','Glycerol-plasticized sheet',
+    {sequence:['Gelatinize starch','Add glycerol','Cast','Oven dry'],dryingMethod:'Oven dry',dryingTemp:'50°C',dryingHumidity:'Ambient',cultivationPeriod:'N/A (extracted feedstock)',chemicalSteps:["25% glycerol plasticizer blended into starch slurry"],surfaceTreatment:'None',coating:'None'},
+    {thickness:0.4,density:1.15,arealDensity:460,porosity:'Very low',moistureContent:'16%'},
+    ['rubbery','matte','slightly tacky','warm','flexible'],
+    [{property:'Elongation at Break',unit:'%',min:40,max:70,category:'Mechanical',confidence:'low',method:'Tensile test (mock)',source:'Demo dataset (illustrative)'}],
+    ['Demo dataset (illustrative)'],'A textbook plasticized starch film — soft and rubbery at room humidity.'),
+  makeVariant('f5','Unplasticized brittle sheet',
+    {sequence:['Gelatinize starch','Cast','Oven dry'],dryingMethod:'Oven dry',dryingTemp:'50°C',dryingHumidity:'Ambient',cultivationPeriod:'N/A (extracted feedstock)',chemicalSteps:[],surfaceTreatment:'None',coating:'None'},
+    {thickness:0.35,density:1.3,arealDensity:410,porosity:'Very low',moistureContent:'6%'},
+    ['brittle','hard','glassy','crackly'],
+    [],['Demo dataset (illustrative)'],'Without plasticizer, starch film is glassy at room temperature and fractures readily.'),
+  makeVariant('f6','Dried thin sheet',
+    {sequence:['Dissolve agar','Cast gel','Air dry (full)'],dryingMethod:'Air dry (extended)',dryingTemp:'22°C',dryingHumidity:'40% RH',cultivationPeriod:'N/A (extracted feedstock)',chemicalSteps:[],surfaceTreatment:'None',coating:'None'},
+    {thickness:0.1,density:1.4,arealDensity:140,porosity:'Very low',moistureContent:'8%'},
+    ['crisp','delicate','papery','translucent','brittle'],
+    [],['Demo dataset (illustrative)'],'Fully dried agar reads almost like a natural cellophane — thin, glassy, and fragile.'),
+  makeVariant('f6','Thick gel-dried sheet',
+    {sequence:['Dissolve agar','Cast gel','Partial dry'],dryingMethod:'Air dry (partial)',dryingTemp:'22°C',dryingHumidity:'55% RH',cultivationPeriod:'N/A (extracted feedstock)',chemicalSteps:[],surfaceTreatment:'None',coating:'None'},
+    {thickness:1.5,density:1.1,arealDensity:1650,porosity:'Low',moistureContent:'28%'},
+    ['leathery','flexible','rubbery','slightly wet-feeling','cool'],
+    [],['Demo dataset (illustrative)'],'Stopping the drying process early leaves substantial residual moisture and a rubbery, gel-like handle.')
+];
+
+/* precompute embeddings + map positions */
+function variantEmbedding(v){
+  if(v.observations.length===0) return [0,0,0,0,0,0,0,0];
+  const vecs=v.observations.map(o=>SemanticEngine.embed(o.text));
+  const sum=[0,0,0,0,0,0,0,0];
+  vecs.forEach(vec=>vec.forEach((val,i)=>sum[i]+=val));
+  return sum.map(x=>x/vecs.length);
+}
+function averageSemanticVec(texts){
+  const vecs=texts.map(t=>SemanticEngine.semanticEmbed(t));
+  const dims=vecs[0].length;
+  const sum=new Array(dims).fill(0);
+  vecs.forEach(vec=>vec.forEach((val,i)=>sum[i]+=val));
+  return sum.map(x=>x/vecs.length);
+}
+function variantSemanticEmbedding(v){
+  if(v.observations.length===0) return SemanticEngine.semanticEmbed('');
+  const vecs=v.observations.map(o=>SemanticEngine.semanticEmbed(o.text));
+  const dims=vecs[0].length;
+  const sum=new Array(dims).fill(0);
+  vecs.forEach(vec=>vec.forEach((val,i)=>sum[i]+=val));
+  return sum.map(x=>x/vecs.length);
+}
+function computeMapPositions(variants){
+  if(variants.length===0) return {};
+  const vecs=variants.map(v=>variantSemanticEmbedding(v));
+  const coords=computePCA2D(vecs);
+  const xs=coords.map(c=>c.x),ys=coords.map(c=>c.y);
+  const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+  const pos={};
+  variants.forEach((v,i)=>{
+    const nx=maxX>minX?(coords[i].x-minX)/(maxX-minX):0.5;
+    const ny=maxY>minY?(coords[i].y-minY)/(maxY-minY):0.5;
+    pos[v.id]={x:40+nx*(1000-80),y:30+ny*(560-60)};
+  });
+  return pos;
+}
+
+/* ============================= STATE ============================= */
+let state={
+  view:'explore',
+  families:[...FAMILIES],
+  variants:[...VARIANTS],
+  mapPositions:{},
+  selectedVariantId:VARIANTS[0].id,
+  describeQuery:[],
+  legendOff:{},
+  mapTransform:{x:0,y:0,scale:1},
+  groundedTransform:{x:0,y:0,scale:1},
+  compareA:VARIANTS[0].id,
+  compareB:VARIANTS[1].id,
+  processFamily:'f1',
+  processDrying:null,
+  processThickness:1,
+  processTreatment:'None',
+  libFilters:{family:'',drying:'',descriptor:'',minConfidence:''},
+  wizard:{step:0,data:freshWizardData()},
+  searchOpen:false,
+  engineMode:'fast',
+  exploreMapMode:'semantic',
+  ashbyPlot:null
+};
+function freshWizardData(){
+  return{familyId:'',newFamilyName:'',variantName:'',processing:[],cultivationPeriod:'',dryingMethod:'',dryingTemp:'',dryingHumidity:'',chemicalSteps:[],thickness:'',density:'',moisture:'',porosity:'',measurements:[],descriptors:[],sourceTitle:'',sourceType:'User-submitted',notes:'',
+  // edit mode fields
+  editingId:null};
+}
+state.mapPositions=computeMapPositions(state.variants);
+
+/* ---------------- persistence ---------------- */
+function cacheLocally(){
+  const customVariants=state.variants.filter(v=>!VARIANTS.find(x=>x.id===v.id));
+  const customFamilies=state.families.filter(f=>!FAMILIES.find(x=>x.id===f.id));
+  // Also persist edits to mock variants (retrofilled data)
+  const editedMockVariants=state.variants.filter(v=>VARIANTS.find(x=>x.id===v.id)&&v._edited);
+  try{localStorage.setItem('biomat-explorer-user-data',JSON.stringify({customVariants,customFamilies,editedMockVariants}));}catch(e){}
+}
+function loadFromLocalCache(){
+  try{
+    const raw=localStorage.getItem('biomat-explorer-user-data');
+    if(raw){
+      const parsed=JSON.parse(raw);
+      if(Array.isArray(parsed.customVariants)&&parsed.customVariants.length) state.variants=[...VARIANTS,...parsed.customVariants];
+      if(Array.isArray(parsed.customFamilies)&&parsed.customFamilies.length) state.families=[...FAMILIES,...parsed.customFamilies];
+      // Restore edits to mock/demo variants
+      if(Array.isArray(parsed.editedMockVariants)&&parsed.editedMockVariants.length){
+        parsed.editedMockVariants.forEach(edited=>{
+          const idx=state.variants.findIndex(v=>v.id===edited.id);
+          if(idx>=0) state.variants[idx]=edited;
+        });
+      }
+    }
+  }catch(e){}
+}
+async function loadUserData(){
+  if(!cloud){cloudStatus='not-configured';loadFromLocalCache();state.mapPositions=computeMapPositions(state.variants);return;}
+  try{
+    const rows=await cloudFetchAll();
+    cloudStatus='connected';
+    const cloudFamilies=(rows||[]).filter(r=>r.entry_type==='family').map(r=>r.payload);
+    const cloudVariants=(rows||[]).filter(r=>r.entry_type==='variant').map(r=>r.payload);
+    state.families=[...FAMILIES,...cloudFamilies.filter(f=>!FAMILIES.find(x=>x.id===f.id))];
+    // Merge cloud edits over seed data
+    state.variants=[...VARIANTS,...cloudVariants.filter(v=>!VARIANTS.find(x=>x.id===v.id))];
+    cloudVariants.filter(v=>VARIANTS.find(x=>x.id===v.id)).forEach(edited=>{
+      const idx=state.variants.findIndex(v=>v.id===edited.id);
+      if(idx>=0) state.variants[idx]=edited;
+    });
+    state.mapPositions=computeMapPositions(state.variants);
+    cacheLocally();
+  }catch(e){
+    console.warn('Cloud load failed, falling back to local cache',e);
+    cloudStatus='error';
+    loadFromLocalCache();
+    state.mapPositions=computeMapPositions(state.variants);
+  }
+}
+function saveUserData(changed){
+  cacheLocally();
+  if(changed&&changed.type&&changed.obj) cloudUpsert(changed.type,changed.obj);
+}
+
+/* ============================= HELPERS ============================= */
+function familyOf(v){return state.families.find(f=>f.id===v.familyId);}
+function familyColor(fid){return FAMILY_COLORS[fid]||'#7A5C8C';}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function variantById(id){return state.variants.find(v=>v.id===id);}
+function variantNameExists(name,excludeId){
+  const norm=String(name||'').trim().toLowerCase();
+  if(!norm) return false;
+  return state.variants.some(v=>v.id!==excludeId&&v.name.trim().toLowerCase()===norm);
+}
+function topDescriptors(v,n){return v.observations.slice(0,n).map(o=>o.text);}
+function normVal(x,lo,hi){return Math.max(0,Math.min(100,((x-lo)/(hi-lo))*100));}
+function fmt3(x){return (x===null||x===undefined||x==='')?null:Number(x).toFixed(3);}
+
+function profileForVariant(v){
+  const emb=variantEmbedding(v);
+  const [L,P,R,E,G,S,T,W]=emb;
+  return{
+    Flexible:normVal(R*0.65+S*0.35,-1,1),
+    Soft:normVal(S,-1,1),
+    Translucent:normVal(T,-1,1),
+    Delicate:normVal(P*0.6-S*0.3,-1,1.3),
+    axisLeatherPaper:normVal(L-P,-1.2,1.2),
+    axisRigidFlexible:normVal(S,-1,1),
+    axisOpaqueTranslucent:normVal(T,-1,1)
+  };
+}
+const CORRELATES={
+  Flexible:['Low bending stiffness','Low or moderate thickness','High strain capacity before failure'],
+  Soft:['Low hardness / high compliance','Lower density surface','Higher moisture content'],
+  Translucent:['Low haze / opacity','Thin cross-section','Uniform fibril or gel structure'],
+  Delicate:['Low tensile strength','Thin geometry','Reduced resistance to handling stress']
+};
+function whyDetail(v,dim,score){
+  const n=v.observations.filter(o=>['tactile','mechanical','visual'].includes(o.dimension)).length;
+  const conf=n>=5?'High':n>=2?'Medium':'Low';
+  return{correlates:CORRELATES[dim]||['Insufficient mapped correlates'],n,conf};
+}
+function treatmentSummary(v){
+  const steps=v.recipe.chemicalSteps;
+  return(steps&&steps.length)?steps.join(' → '):'None';
+}
+function confBucket(list){
+  const n=list.length;
+  if(n>=4) return 'high';if(n>=2) return 'medium';return 'low';
+}
+
+/* swatch svg */
+function seededRandom(seed){let s=hashStr(seed);return function(){s=(s*1103515245+12345)>>>0;return(s%10000)/10000;};}
+function catmullRomPath(points){
+  const n=points.length;let d=`M ${points[0].x.toFixed(2)},${points[0].y.toFixed(2)} `;
+  for(let i=0;i<n;i++){
+    const p0=points[(i-1+n)%n],p1=points[i],p2=points[(i+1)%n],p3=points[(i+2)%n];
+    const c1x=p1.x+(p2.x-p0.x)/6,c1y=p1.y+(p2.y-p0.y)/6;
+    const c2x=p2.x-(p3.x-p1.x)/6,c2y=p2.y-(p3.y-p1.y)/6;
+    d+=`C ${c1x.toFixed(2)},${c1y.toFixed(2)} ${c2x.toFixed(2)},${c2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)} `;
+  }
+  return d+'Z';
+}
+function swatchSVG(v,size){
+  size=size||120;
+  const emb=variantEmbedding(v);
+  const [L,P,R,E,G,S,T,W]=emb;
+  const rough=1-(S+1)/2;
+  const sides=Math.round(5+((L-P+1.2)/2.4)*7);
+  const cx=90,cy=90,baseR=64;
+  const rand=seededRandom(v.id+v.name);
+  const points=[];
+  for(let i=0;i<sides;i++){
+    const angle=(i/sides)*Math.PI*2;
+    const jitter=1+(rand()-0.5)*Math.max(0.15,rough)*0.8;
+    points.push({x:cx+baseR*jitter*Math.cos(angle),y:cy+baseR*jitter*Math.sin(angle)});
+  }
+  const path=catmullRomPath(points);
+  const color=familyColor(v.familyId);
+  const fillOpacity=(0.16+((T+1)/2)*0.5).toFixed(2);
+  const strokeWidth=(1+((1-(P+1)/2))*2.2).toFixed(2);
+  return `<svg class="swatch" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg" style="width:${size}px;height:${size}px;">
+    <path d="${path}" fill="${color}" fill-opacity="${fillOpacity}" stroke="${color}" stroke-width="${strokeWidth}" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+/* ============================= EDIT HELPER ============================= */
+// Populate the wizard with an existing variant's data for editing
+function loadVariantIntoWizard(v){
+  const fam=familyOf(v);
+  state.wizard={
+    step:0,
+    data:{
+      editingId:v.id,
+      familyId:v.familyId,
+      newFamilyName: FAMILIES.find(f=>f.id===v.familyId) ? '' : (fam?fam.name:''),
+      variantName:v.name,
+      processing:v.recipe.sequence||[],
+      cultivationPeriod:v.recipe.cultivationPeriod||'',
+      dryingMethod:v.recipe.dryingMethod||'',
+      dryingTemp:v.recipe.dryingTemp||'',
+      dryingHumidity:v.recipe.dryingHumidity||'',
+      chemicalSteps:(v.recipe.chemicalSteps||[]).slice(),
+      thickness:v.specimen.thickness!=null?String(v.specimen.thickness):'',
+      density:v.specimen.density!=null?String(v.specimen.density):'',
+      moisture:v.specimen.moistureContent||'',
+      porosity:v.specimen.porosity||'',
+      measurements:v.measurements.map(m=>({property:m.property,min:m.min,max:m.max,mean:m.mean!=null?m.mean:null,stddev:m.stddev!=null?m.stddev:null,unit:m.unit,category:m.category||'',method:m.method||'',confidence:m.confidence||'low'})),
+      descriptors:v.observations.map(o=>o.text),
+      sourceTitle:v.sources[0]||'',
+      sourceType:'User-submitted',
+      notes:v.notes||''
+    }
+  };
+  state.view='add';
+  render();
+}
+
+/* ============================= RENDER: SHELL ============================= */
+function render(){
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===state.view));
+  document.getElementById('libCount').textContent=state.variants.length+' variants · '+state.families.length+' families';
+  const app=document.getElementById('app');
+  const renderers={explore:renderExplore,detail:renderDetail,compare:renderCompare,process:renderProcess,add:renderAdd,library:renderLibrary,about:renderAbout};
+  app.innerHTML=renderers[state.view]();
+  afterRender[state.view]&&afterRender[state.view]();
+}
+const afterRender={};
+
+/* ============================= EXPLORE VIEW ============================= */
+// Determine which numeric properties have enough data across variants to support an Ashby-style plot
+function availableAshbyProperties(){
+  const counts={};
+  state.variants.forEach(v=>{
+    v.measurements.forEach(m=>{
+      const val=numericMeasureValue(m);
+      if(val!=null){counts[m.property]=(counts[m.property]||0)+1;}
+    });
+  });
+  return Object.keys(counts).filter(p=>counts[p]>=2).sort();
+}
+// Determine every X/Y property pairing that actually has at least 2 variants with data for both, so
+// the user only ever gets to pick plots that will show something.
+function availableAshbyPlots(){
+  const props=availableAshbyProperties();
+  const combos=[];
+  for(let i=0;i<props.length;i++){
+    for(let j=i+1;j<props.length;j++){
+      let count=0;
+      state.variants.forEach(v=>{
+        const mx=v.measurements.find(m=>m.property===props[i]);
+        const my=v.measurements.find(m=>m.property===props[j]);
+        if(!mx||!my) return;
+        const x=numericMeasureValue(mx),y=numericMeasureValue(my);
+        if(x==null||y==null||x<=0||y<=0) return;
+        count++;
+      });
+      if(count>=2) combos.push({x:props[i],y:props[j],count});
+    }
+  }
+  combos.sort((a,b)=>b.count-a.count||a.x.localeCompare(b.x)||a.y.localeCompare(b.y));
+  return combos;
+}
+function numericMeasureValue(m){
+  // Prefer mean, then midpoint of min/max, converted to base units for the property
+  if(m.mean!=null&&m.mean!=='') return toBaseValue(m.mean,m.unit,m.property);
+  if(m.min!=null&&m.max!=null) return toBaseValue((Number(m.min)+Number(m.max))/2,m.unit,m.property);
+  if(m.min!=null) return toBaseValue(m.min,m.unit,m.property);
+  if(m.max!=null) return toBaseValue(m.max,m.unit,m.property);
+  return null;
+}
+
+/* ---- Grounded / data-driven map: positions variants by measured-property similarity, not words ---- */
+// "Demo" here means unedited seed/illustrative data — matches the same badge logic used elsewhere in
+// the UI. An entry that started as demo but has since been retrofilled with real measurements (_edited)
+// is treated as real data. Because this is recomputed fresh from state.variants on every draw (nothing
+// is cached), deleting or editing an entry automatically updates — or removes it from — this view.
+function isDemoVariant(v){return !!(v.mock&&!v._edited);}
+function groundedEligibleProperties(variants){
+  const counts={};
+  variants.forEach(v=>v.measurements.forEach(m=>{
+    const val=numericMeasureValue(m);
+    if(val!=null) counts[m.property]=(counts[m.property]||0)+1;
+  }));
+  return Object.keys(counts).filter(p=>counts[p]>=2);
+}
+function computeGroundedPositions(){
+  const eligible=state.variants.filter(v=>!isDemoVariant(v));
+  const props=groundedEligibleProperties(eligible);
+  const withData=eligible.filter(v=>props.some(p=>{
+    const m=v.measurements.find(mm=>mm.property===p);
+    return m&&numericMeasureValue(m)!=null;
+  }));
+  if(withData.length<2||props.length===0) return{positions:{},variants:withData,props};
+  // z-score each property across the eligible (non-demo) variants so properties on very different
+  // scales (e.g. mm vs W/m²) contribute comparably to the projection.
+  const stats={};
+  props.forEach(p=>{
+    const vals=withData.map(v=>{
+      const m=v.measurements.find(mm=>mm.property===p);
+      return m?numericMeasureValue(m):null;
+    }).filter(x=>x!=null);
+    const mean=vals.reduce((a,b)=>a+b,0)/vals.length;
+    const variance=vals.reduce((a,b)=>a+(b-mean)*(b-mean),0)/vals.length;
+    stats[p]={mean,std:Math.sqrt(variance)||1};
+  });
+  // Missing property on a given variant is imputed as 0 (the mean, post z-scoring) rather than
+  // fabricated — it simply doesn't push that variant's position along that axis.
+  const vecs=withData.map(v=>props.map(p=>{
+    const m=v.measurements.find(mm=>mm.property===p);
+    const val=m?numericMeasureValue(m):null;
+    if(val==null) return 0;
+    return (val-stats[p].mean)/stats[p].std;
+  }));
+  const coords=computePCA2D(vecs);
+  const xs=coords.map(c=>c.x),ys=coords.map(c=>c.y);
+  const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+  const positions={};
+  withData.forEach((v,i)=>{
+    const nx=maxX>minX?(coords[i].x-minX)/(maxX-minX):0.5;
+    const ny=maxY>minY?(coords[i].y-minY)/(maxY-minY):0.5;
+    positions[v.id]={x:40+nx*(1000-80),y:30+ny*(560-60)};
+  });
+  return{positions,variants:withData,props};
+}
+function renderExplore(){
+  const sel=variantById(state.selectedVariantId);
+  const families=state.families;
+  const legend=families.map(f=>`<span class="legend-chip ${state.legendOff[f.id]?'off':''}" data-legend="${f.id}"><span class="dot" style="background:${familyColor(f.id)}"></span>${esc(f.name)}</span>`).join('');
+  let matches=[];
+  if(state.describeQuery.length){
+    const qAvg=averageSemanticVec(state.describeQuery);
+    matches=state.variants.map(v=>({v,sim:SemanticEngine.similarity(qAvg,variantSemanticEmbedding(v))})).sort((a,b)=>b.sim-a.sim).slice(0,6);
+  }
+  const mapModeControl=`<div class="map-mode-toggle">
+      <select id="mapModeSelect">
+        <option value="semantic" ${state.exploreMapMode==='semantic'?'selected':''}>Semantic map</option>
+        <option value="ashby" ${state.exploreMapMode==='ashby'?'selected':''}>Property plot (Ashby)</option>
+        <option value="grounded" ${state.exploreMapMode==='grounded'?'selected':''}>Grounded / data-driven</option>
+      </select>
+    </div>`;
+  let ashbyAxisControls='';
+  if(state.exploreMapMode==='ashby'){
+    const ashbyPlots=availableAshbyPlots();
+    // Keep the current selection if it's still valid; otherwise fall back to the richest available plot.
+    if(!state.ashbyPlot||!ashbyPlots.some(p=>p.x===state.ashbyPlot.x&&p.y===state.ashbyPlot.y)){
+      state.ashbyPlot=ashbyPlots[0]||null;
+    }
+    const currentIdx=state.ashbyPlot?ashbyPlots.findIndex(p=>p.x===state.ashbyPlot.x&&p.y===state.ashbyPlot.y):-1;
+    ashbyAxisControls=`<div class="ashby-axis-controls" style="top:52px;">
+      <label>Property plot</label>
+      ${ashbyPlots.length?`<select id="ashbyPlotSelect">${ashbyPlots.map((p,idx)=>`<option value="${idx}" ${idx===currentIdx?'selected':''}>${esc(p.x)} vs ${esc(p.y)} (${p.count} pts)</option>`).join('')}</select>`
+        :`<span class="mono" style="font-size:9.5px;color:var(--graphite);">No property pairs with overlapping data yet.</span>`}
+    </div>`;
+  }
+  return`
+  <div class="explore-grid">
+    <div class="card">
+      <div class="eyebrow">Describe</div>
+      <h3>What does it feel, look, or behave like?</h3>
+      <p class="hint">Open-ended — words, phrases, or comparisons. Nothing is forced into a fixed vocabulary.</p>
+      <div class="field"><input type="text" id="descInput" placeholder="e.g. leathery, like wet paper, skin-like…"></div>
+      <button class="btn ghost" id="addDescBtn" style="width:100%;margin-bottom:10px;">+ Add descriptor</button>
+      <div class="chip-row" id="descChips">
+        ${state.describeQuery.map((d,i)=>`<span class="chip">${esc(d)}<button data-remove-desc="${i}">×</button></span>`).join('')||'<span class="hint" style="margin:0;">No descriptors added yet.</span>'}
+      </div>
+      ${matches.length?`<div class="eyebrow" style="margin-top:16px;">Closest matches</div>
+      <div class="results-list">
+        ${matches.map(m=>`<div class="result-row" data-select-variant="${m.v.id}">
+          <span class="rr-sim">${Math.round((m.sim+1)/2*100)}%</span>
+          <div class="rr-name">${esc(m.v.name)}</div>
+          <div class="rr-fam">${esc(familyOf(m.v).name)}</div>
+        </div>`).join('')}
+      </div>`:''}
+    </div>
+    <div>
+      <div class="map-wrap">
+        <svg id="semanticMap" viewBox="0 0 1000 560" preserveAspectRatio="xMidYMid meet"></svg>
+        ${mapModeControl}
+        ${ashbyAxisControls}
+        <div class="map-legend">${legend}</div>
+        <div class="map-hint">${state.exploreMapMode==='ashby'?'log-scaled axes':state.exploreMapMode==='grounded'?'drag to pan · scroll to zoom · non-demo data only':'scroll to zoom · drag to pan'}</div>
+        <div class="tooltip-float" id="mapTooltip" style="display:none;"></div>
+      </div>
+      <p class="hint" style="margin-top:10px;">${
+        state.exploreMapMode==='ashby'?'Each point is a material <b>variant</b> plotted by two measured properties (mean or midpoint of range), converted to consistent SI units. Only variants with data for both axes are shown.'
+        :state.exploreMapMode==='grounded'?'Each point is a <b>user-submitted variant</b> (demo/seed entries are excluded) positioned by a PCA projection of its z-scored measured properties — so distance reflects how similar two materials\' actual measurements are, not how their descriptions read. Recomputed live: edits, deletions, and new entries all update it immediately.'
+        :"Each point is a material <b>variant</b>, not a family — position is a rough semantic projection of how it has been described."
+      }</p>
+    </div>
+    <div class="card mini-card">
+      ${sel?`
+        ${swatchSVG(sel,120)}
+        <div class="mc-fam">${esc(familyOf(sel).name)}</div>
+        <div class="mc-name">${esc(sel.name)}</div>
+        <div class="mini-tags">${topDescriptors(sel,4).map(t=>`<span>${esc(t)}</span>`).join('')}</div>
+        <button class="btn" data-goto-detail="${sel.id}" style="margin-top:8px;">View full profile →</button>
+      `:`<p class="hint">Select a variant on the map.</p>`}
+    </div>
+  </div>`;
+}
+afterRender.explore=function(){
+  if(state.exploreMapMode==='ashby') drawAshbyPlot();
+  else if(state.exploreMapMode==='grounded') drawGroundedPlot();
+  else drawMap();
+  document.getElementById('mapModeSelect').addEventListener('change',e=>{state.exploreMapMode=e.target.value;render();});
+  document.getElementById('ashbyPlotSelect')?.addEventListener('change',e=>{
+    const plots=availableAshbyPlots();
+    state.ashbyPlot=plots[parseInt(e.target.value)]||null;
+    render();
+  });
+  const input=document.getElementById('descInput');
+  const addBtn=document.getElementById('addDescBtn');
+  function addDesc(){
+    const v=input.value.trim();
+    if(!v) return;
+    state.describeQuery.push(v);
+    input.value='';
+    render();
+  }
+  addBtn.addEventListener('click',addDesc);
+  input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addDesc();}});
+};
+
+function drawMap(){
+  const svg=document.getElementById('semanticMap');
+  if(!svg) return;
+  const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.setAttribute('id','mapG');
+  applyMapTransform(g);
+  let highlightIds=null;
+  if(state.describeQuery.length){
+    const qAvg=averageSemanticVec(state.describeQuery);
+    highlightIds=new Set(state.variants.map(v=>({id:v.id,sim:SemanticEngine.similarity(qAvg,variantSemanticEmbedding(v))})).sort((a,b)=>b.sim-a.sim).slice(0,6).map(x=>x.id));
+  }
+  state.variants.forEach(v=>{
+    if(state.legendOff[v.familyId]) return;
+    const pos=state.mapPositions[v.id];
+    if(!pos) return;
+    const isSel=v.id===state.selectedVariantId;
+    const isHi=highlightIds&&highlightIds.has(v.id);
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',pos.x);circle.setAttribute('cy',pos.y);
+    circle.setAttribute('r',isSel?11:(isHi?9:6.5));
+    circle.setAttribute('fill',familyColor(v.familyId));
+    circle.setAttribute('fill-opacity',highlightIds?(isHi?0.95:0.18):(isSel?1:0.75));
+    circle.setAttribute('stroke',isSel?'#1C231F':'none');
+    circle.setAttribute('stroke-width',isSel?2:0);
+    circle.classList.add('dot');
+    circle.setAttribute('data-select-variant',v.id);
+    circle.setAttribute('data-tooltip',v.name+' — '+familyOf(v).name);
+    g.appendChild(circle);
+    if(isSel){
+      const label=document.createElementNS('http://www.w3.org/2000/svg','text');
+      label.setAttribute('x',pos.x+14);label.setAttribute('y',pos.y+4);
+      label.setAttribute('class','dot-label');
+      label.textContent=v.name;
+      g.appendChild(label);
+    }
+  });
+  svg.innerHTML='';
+  svg.appendChild(g);
+  let dragging=false,lastX=0,lastY=0;
+  svg.onmousedown=e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;};
+  window.onmousemove=e=>{
+    if(!dragging) return;
+    const dx=(e.clientX-lastX)/state.mapTransform.scale,dy=(e.clientY-lastY)/state.mapTransform.scale;
+    state.mapTransform.x+=dx;state.mapTransform.y+=dy;
+    lastX=e.clientX;lastY=e.clientY;
+    applyMapTransform(document.getElementById('mapG'));
+  };
+  window.onmouseup=()=>{dragging=false;};
+  svg.onwheel=e=>{
+    e.preventDefault();
+    const delta=e.deltaY>0?-0.1:0.1;
+    state.mapTransform.scale=Math.max(0.6,Math.min(3,state.mapTransform.scale+delta));
+    applyMapTransform(document.getElementById('mapG'));
+  };
+  svg.onmousemove=e=>{
+    const t=e.target.closest('[data-tooltip]');
+    const tip=document.getElementById('mapTooltip');
+    if(t){
+      const wrap=svg.parentElement.getBoundingClientRect();
+      tip.style.display='block';
+      tip.style.left=(e.clientX-wrap.left+12)+'px';
+      tip.style.top=(e.clientY-wrap.top+12)+'px';
+      tip.textContent=t.getAttribute('data-tooltip');
+    }else{tip.style.display='none';}
+  };
+}
+function applyMapTransform(g){
+  if(!g) return;
+  const{x,y,scale}=state.mapTransform;
+  g.setAttribute('transform',`scale(${scale}) translate(${x},${y})`);
+}
+
+/* ---- Grounded / data-driven map drawing ---- */
+function drawGroundedPlot(){
+  const svg=document.getElementById('semanticMap');
+  if(!svg) return;
+  const tip=document.getElementById('mapTooltip');
+  const{positions,variants,props}=computeGroundedPositions();
+  if(Object.keys(positions).length===0){
+    svg.innerHTML='';
+    svg.onwheel=null;svg.onmousedown=null;window.onmousemove=null;window.onmouseup=null;svg.onmousemove=null;
+    const t1=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t1.setAttribute('x',500);t1.setAttribute('y',268);t1.setAttribute('text-anchor','middle');
+    t1.setAttribute('fill','var(--graphite)');t1.setAttribute('font-family','IBM Plex Mono, monospace');t1.setAttribute('font-size','13');
+    t1.textContent='Not enough non-demo measured data yet.';
+    svg.appendChild(t1);
+    const t2=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t2.setAttribute('x',500);t2.setAttribute('y',292);t2.setAttribute('text-anchor','middle');
+    t2.setAttribute('fill','var(--graphite)');t2.setAttribute('font-family','IBM Plex Mono, monospace');t2.setAttribute('font-size','11');
+    t2.textContent='Add user-submitted variants with overlapping measurements to populate this view.';
+    svg.appendChild(t2);
+    if(tip) tip.style.display='none';
+    return;
+  }
+  const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.setAttribute('id','mapG');
+  applyGroundedTransform(g);
+  variants.forEach(v=>{
+    if(state.legendOff[v.familyId]) return;
+    const pos=positions[v.id];
+    if(!pos) return;
+    const isSel=v.id===state.selectedVariantId;
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',pos.x);circle.setAttribute('cy',pos.y);
+    circle.setAttribute('r',isSel?11:6.5);
+    circle.setAttribute('fill',familyColor(v.familyId));
+    circle.setAttribute('fill-opacity',isSel?1:0.78);
+    circle.setAttribute('stroke',isSel?'#1C231F':'none');
+    circle.setAttribute('stroke-width',isSel?2:0);
+    circle.classList.add('dot');
+    circle.setAttribute('data-select-variant',v.id);
+    circle.setAttribute('data-tooltip',v.name+' — '+familyOf(v).name+' ('+props.length+' shared properties in this projection)');
+    g.appendChild(circle);
+    if(isSel){
+      const label=document.createElementNS('http://www.w3.org/2000/svg','text');
+      label.setAttribute('x',pos.x+14);label.setAttribute('y',pos.y+4);
+      label.setAttribute('class','dot-label');
+      label.textContent=v.name;
+      g.appendChild(label);
+    }
+  });
+  svg.innerHTML='';
+  svg.appendChild(g);
+  let dragging=false,lastX=0,lastY=0;
+  svg.onmousedown=e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;};
+  window.onmousemove=e=>{
+    if(!dragging) return;
+    const dx=(e.clientX-lastX)/state.groundedTransform.scale,dy=(e.clientY-lastY)/state.groundedTransform.scale;
+    state.groundedTransform.x+=dx;state.groundedTransform.y+=dy;
+    lastX=e.clientX;lastY=e.clientY;
+    applyGroundedTransform(document.getElementById('mapG'));
+  };
+  window.onmouseup=()=>{dragging=false;};
+  svg.onwheel=e=>{
+    e.preventDefault();
+    const delta=e.deltaY>0?-0.1:0.1;
+    state.groundedTransform.scale=Math.max(0.6,Math.min(3,state.groundedTransform.scale+delta));
+    applyGroundedTransform(document.getElementById('mapG'));
+  };
+  svg.onmousemove=e=>{
+    const t=e.target.closest('[data-tooltip]');
+    if(t&&tip){
+      const wrap=svg.parentElement.getBoundingClientRect();
+      tip.style.display='block';
+      tip.style.left=(e.clientX-wrap.left+12)+'px';
+      tip.style.top=(e.clientY-wrap.top+12)+'px';
+      tip.textContent=t.getAttribute('data-tooltip');
+    }else if(tip){tip.style.display='none';}
+  };
+}
+function applyGroundedTransform(g){
+  if(!g) return;
+  const{x,y,scale}=state.groundedTransform;
+  g.setAttribute('transform',`scale(${scale}) translate(${x},${y})`);
+}
+
+/* ---- Ashby-style property plot ---- */
+function drawAshbyPlot(){
+  const svg=document.getElementById('semanticMap');
+  if(!svg) return;
+  svg.innerHTML='';
+  svg.onwheel=null;svg.onmousedown=null;svg.onmousemove=null;window.onmousemove=null;window.onmouseup=null;
+  const tipEl=document.getElementById('mapTooltip');
+  if(!state.ashbyPlot){
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',500);t.setAttribute('y',280);t.setAttribute('text-anchor','middle');
+    t.setAttribute('fill','var(--graphite)');t.setAttribute('font-family','IBM Plex Mono, monospace');t.setAttribute('font-size','13');
+    t.textContent='No property pairs have overlapping data yet — add measurements to see a plot.';
+    svg.appendChild(t);
+    if(tipEl) tipEl.style.display='none';
+    return;
+  }
+  const propX=state.ashbyPlot.x,propY=state.ashbyPlot.y;
+  const pts=[];
+  state.variants.forEach(v=>{
+    if(state.legendOff[v.familyId]) return;
+    const mx=v.measurements.find(m=>m.property===propX);
+    const my=v.measurements.find(m=>m.property===propY);
+    if(!mx||!my) return;
+    const x=numericMeasureValue(mx),y=numericMeasureValue(my);
+    if(x==null||y==null||x<=0||y<=0) return;
+    pts.push({v,x,y});
+  });
+  const tip=document.getElementById('mapTooltip');
+  if(pts.length<2){
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',500);t.setAttribute('y',280);t.setAttribute('text-anchor','middle');
+    t.setAttribute('fill','var(--graphite)');t.setAttribute('font-family','IBM Plex Mono, monospace');t.setAttribute('font-size','13');
+    t.textContent='Insufficient data for '+propX+' vs '+propY+' — try a different pair of properties.';
+    svg.appendChild(t);
+    if(tip) tip.style.display='none';
+    return;
+  }
+  const pad={l:70,r:30,t:20,b:50};
+  const w=1000-pad.l-pad.r,h=560-pad.t-pad.b;
+  const logs=pts.map(p=>Math.log10(p.x)),logsY=pts.map(p=>Math.log10(p.y));
+  let minX=Math.min(...logs),maxX=Math.max(...logs),minY=Math.min(...logsY),maxY=Math.max(...logsY);
+  if(minX===maxX){minX-=1;maxX+=1;}
+  if(minY===maxY){minY-=1;maxY+=1;}
+  const spanX=(maxX-minX)*0.15,spanY=(maxY-minY)*0.15;
+  minX-=spanX;maxX+=spanX;minY-=spanY;maxY+=spanY;
+  function px(lx){return pad.l+((lx-minX)/(maxX-minX))*w;}
+  function py(ly){return pad.t+h-((ly-minY)/(maxY-minY))*h;}
+  const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+  // axis lines
+  const axisColor='rgba(28,35,31,0.25)';
+  const xAxis=document.createElementNS('http://www.w3.org/2000/svg','line');
+  xAxis.setAttribute('x1',pad.l);xAxis.setAttribute('x2',pad.l+w);xAxis.setAttribute('y1',pad.t+h);xAxis.setAttribute('y2',pad.t+h);
+  xAxis.setAttribute('stroke',axisColor);g.appendChild(xAxis);
+  const yAxis=document.createElementNS('http://www.w3.org/2000/svg','line');
+  yAxis.setAttribute('x1',pad.l);yAxis.setAttribute('x2',pad.l);yAxis.setAttribute('y1',pad.t);yAxis.setAttribute('y2',pad.t+h);
+  yAxis.setAttribute('stroke',axisColor);g.appendChild(yAxis);
+  // tick labels (log decades)
+  for(let d=Math.ceil(minX);d<=Math.floor(maxX);d++){
+    const xx=px(d);
+    const tick=document.createElementNS('http://www.w3.org/2000/svg','line');
+    tick.setAttribute('x1',xx);tick.setAttribute('x2',xx);tick.setAttribute('y1',pad.t+h);tick.setAttribute('y2',pad.t+h+4);
+    tick.setAttribute('stroke',axisColor);g.appendChild(tick);
+    const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('x',xx);lbl.setAttribute('y',pad.t+h+18);lbl.setAttribute('text-anchor','middle');
+    lbl.setAttribute('font-family','IBM Plex Mono, monospace');lbl.setAttribute('font-size','9');lbl.setAttribute('fill','var(--graphite)');
+    lbl.textContent='10^'+d;g.appendChild(lbl);
+  }
+  for(let d=Math.ceil(minY);d<=Math.floor(maxY);d++){
+    const yy=py(d);
+    const tick=document.createElementNS('http://www.w3.org/2000/svg','line');
+    tick.setAttribute('x1',pad.l-4);tick.setAttribute('x2',pad.l);tick.setAttribute('y1',yy);tick.setAttribute('y2',yy);
+    tick.setAttribute('stroke',axisColor);g.appendChild(tick);
+    const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('x',pad.l-8);lbl.setAttribute('y',yy+3);lbl.setAttribute('text-anchor','end');
+    lbl.setAttribute('font-family','IBM Plex Mono, monospace');lbl.setAttribute('font-size','9');lbl.setAttribute('fill','var(--graphite)');
+    lbl.textContent='10^'+d;g.appendChild(lbl);
+  }
+  const xEntry=catalogEntry(propX),yEntry=catalogEntry(propY);
+  const xLabel=document.createElementNS('http://www.w3.org/2000/svg','text');
+  xLabel.setAttribute('x',pad.l+w/2);xLabel.setAttribute('y',pad.t+h+38);xLabel.setAttribute('text-anchor','middle');
+  xLabel.setAttribute('font-family','Space Grotesk, sans-serif');xLabel.setAttribute('font-size','11');xLabel.setAttribute('fill','var(--ink-soft)');
+  xLabel.textContent=propX+(xEntry&&xEntry.baseUnit?' ('+xEntry.baseUnit+')':'');
+  g.appendChild(xLabel);
+  const yLabel=document.createElementNS('http://www.w3.org/2000/svg','text');
+  yLabel.setAttribute('x',16);yLabel.setAttribute('y',pad.t+h/2);yLabel.setAttribute('text-anchor','middle');
+  yLabel.setAttribute('font-family','Space Grotesk, sans-serif');yLabel.setAttribute('font-size','11');yLabel.setAttribute('fill','var(--ink-soft)');
+  yLabel.setAttribute('transform','rotate(-90 16 '+(pad.t+h/2)+')');
+  yLabel.textContent=propY+(yEntry&&yEntry.baseUnit?' ('+yEntry.baseUnit+')':'');
+  g.appendChild(yLabel);
+  pts.forEach(p=>{
+    const cx=px(Math.log10(p.x)),cy=py(Math.log10(p.y));
+    const isSel=p.v.id===state.selectedVariantId;
+    const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',cx);c.setAttribute('cy',cy);c.setAttribute('r',isSel?11:7);
+    c.setAttribute('fill',familyColor(p.v.familyId));
+    c.setAttribute('fill-opacity',isSel?1:0.8);
+    c.setAttribute('stroke',isSel?'#1C231F':'none');c.setAttribute('stroke-width',isSel?2:0);
+    c.classList.add('dot');
+    c.setAttribute('data-select-variant',p.v.id);
+    c.setAttribute('data-tooltip',p.v.name+' — '+familyOf(p.v).name+' ('+propX+': '+p.x.toPrecision(3)+', '+propY+': '+p.y.toPrecision(3)+')');
+    g.appendChild(c);
+  });
+  svg.appendChild(g);
+  svg.onmousemove=e=>{
+    const t=e.target.closest('[data-tooltip]');
+    if(t&&tip){
+      const wrap=svg.parentElement.getBoundingClientRect();
+      tip.style.display='block';
+      tip.style.left=(e.clientX-wrap.left+12)+'px';
+      tip.style.top=(e.clientY-wrap.top+12)+'px';
+      tip.textContent=t.getAttribute('data-tooltip');
+    }else if(tip){tip.style.display='none';}
+  };
+}
+
+/* ============================= DETAIL VIEW ============================= */
+function renderDetail(){
+  const v=variantById(state.selectedVariantId);
+  if(!v) return`<div class="card"><p>No variant selected. Go to Explore to pick one.</p></div>`;
+  const fam=familyOf(v);
+  const profile=profileForVariant(v);
+  const clusters=SemanticEngine.cluster(v.observations.map(o=>o.text));
+  const rand=seededRandom(v.id+'pos');
+  return`
+  <div class="card">
+    <div class="breadcrumb"><b>${esc(fam.name)}</b>  ›  ${esc(v.name)} ${v.mock&&!v._edited?'<span class="badge mock">demo</span>':''} ${!v.mock?'<span class="badge user">user submitted</span>':''} ${v._edited?'<span class="badge user">edited</span>':''}</div>
+    <div class="detail-head">
+      <div>
+        <h2>${esc(fam.name)}</h2>
+        <div class="hint" style="margin:0;">${esc(v.name)}${v.notes?' — '+esc(v.notes):''}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+        ${swatchSVG(v,110)}
+        <button class="btn edit" data-edit-variant="${v.id}">Edit this entry</button>
+      </div>
+    </div>
+    <div class="detail-grid">
+      <div>
+        <div class="eyebrow">Experiential language</div>
+        <div class="constellation">
+          ${v.observations.map(o=>{
+            const size=12+Math.round(rand()*10);
+            const top=8+Math.round(rand()*130),left=4+Math.round(rand()*75);
+            return`<span style="font-size:${size}px;top:${top}px;left:${left}%;" data-click-descriptor="${esc(o.text)}">${esc(o.text)}</span>`;
+          }).join('')}
+        </div>
+        ${v.observations.length===0?'<p class="hint">No experiential observations recorded yet for this variant.</p>':''}
+      </div>
+      <div>
+        <div class="eyebrow" style="margin-bottom:8px;">Experience profile <span class="hint" style="display:inline;margin:0;">— interpretations, not direct measurements</span></div>
+        ${['Flexible','Soft','Translucent','Delicate'].map(dim=>{
+          const score=Math.round(profile[dim]);
+          const wd=whyDetail(v,dim,score);
+          return`<div class="profile-row">
+            <div class="profile-label">${dim}</div>
+            <div class="profile-track"><div class="profile-fill" style="width:${score}%;"></div></div>
+            <div class="profile-val">${score}/100</div>
+            <button class="why-btn" data-toggle-why="${dim}">Why?</button>
+          </div>
+          <div class="why-panel" id="why-${dim}" style="display:none;">
+            <div class="wp-title">Why does this variant appear ${dim.toLowerCase()}?</div>
+            <div>Possible physical correlates:</div>
+            <ul>${wd.correlates.map(c=>`<li>${esc(c)}</li>`).join('')}</ul>
+            <div>Supporting observations: <b>${wd.n}</b>   Confidence: <span class="conf conf-${wd.conf.toLowerCase()}">${wd.conf}</span></div>
+            <div class="wp-note">Experience varies with humidity and specimen thickness — this is not a fixed material property.</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="card" style="margin-top:18px;background:var(--surface-2);border-color:var(--line);">
+      <div class="eyebrow">Semantic neighbourhood</div>
+      ${Object.entries(clusters).filter(([k,arr])=>arr.length).map(([name,arr])=>`<div style="margin:6px 0;"><span class="mono" style="font-size:11.5px;color:var(--ink-soft);">${esc(name)}:</span> ${arr.map(a=>`<span class="badge" style="margin-left:4px;">${esc(a)}</span>`).join('')}</div>`).join('')||'<p class="hint">No descriptors to cluster yet.</p>'}
+    </div>
+  </div>
+  <div class="card">
+    <h3>Physical properties</h3>
+    <table class="data-table">
+      <thead><tr><th>Property</th><th>Range / Value</th><th>Category</th><th>Method / Standard</th><th>Confidence</th><th>Source</th></tr></thead>
+      <tbody>
+        ${v.measurements.length?v.measurements.map(m=>`<tr>
+          <td>${esc(m.property)}</td>
+          <td>${measurementValueDisplay(m)}</td>
+          <td>${esc(m.category)}</td>
+          <td class="mono" style="font-size:11.5px;">${esc(m.method||'—')}</td>
+          <td><span class="conf conf-${m.confidence}">${m.confidence}</span></td>
+          <td class="mono" style="font-size:11px;">${esc(m.source)}</td>
+        </tr>`).join(''):`<tr><td colspan="6" class="hint">No measurements recorded — missing data is shown as missing, never fabricated.</td></tr>`}
+      </tbody>
+    </table>
+  </div>
+  <div class="compare-grid" style="margin-top:16px;">
+    <div class="card" style="margin-top:0;">
+      <h3>Processing history</h3>
+      <div class="process-flow">
+        ${v.recipe.sequence.map((s,i)=>`<span class="process-step">${esc(s)}</span>${i<v.recipe.sequence.length-1?'<span class="process-arrow">→</span>':''}`).join('')}
+      </div>
+      <table class="data-table" style="margin-top:8px;">
+        <tbody>
+          <tr><td class="mono">Cultivation period</td><td>${esc(v.recipe.cultivationPeriod||'—')}</td></tr>
+          <tr><td class="mono">Drying method</td><td>${esc(v.recipe.dryingMethod||'—')}</td></tr>
+          <tr><td class="mono">Drying temp</td><td>${esc(v.recipe.dryingTemp||'—')}</td></tr>
+          <tr><td class="mono">Drying humidity</td><td>${esc(v.recipe.dryingHumidity||'—')}</td></tr>
+          <tr><td class="mono">Surface treatment</td><td>${esc(v.recipe.surfaceTreatment||'None')}</td></tr>
+        </tbody>
+      </table>
+      <div class="eyebrow" style="margin-top:14px;">Chemical treatment</div>
+      ${chemicalStepsDisplay(v.recipe.chemicalSteps)}
+    </div>
+    <div class="card" style="margin-top:0;">
+      <h3>Specimen &amp; environment</h3>
+      <div class="env-grid">
+        <div class="env-item"><b>${fmt3(v.specimen.thickness)??'—'} mm</b>thickness</div>
+        <div class="env-item"><b>${fmt3(v.specimen.density)??'—'}</b>density (g/cm³)</div>
+        <div class="env-item"><b>${esc(v.specimen.porosity||'—')}</b>porosity</div>
+        <div class="env-item"><b>${esc(v.specimen.moistureContent||'—')}</b>moisture content</div>
+      </div>
+      <div class="eyebrow" style="margin-top:16px;">Evidence &amp; sources</div>
+      ${v.sources.map(s=>`<div class="source-row"><div class="sr-title">${esc(s)}</div><div class="sr-meta">${v.mock&&!v._edited?'Illustrative demo data':v._edited?'Demo data — retrofilled with user edits':'User-reported observation'}</div></div>`).join('')}
+    </div>
+  </div>`;
+}
+function chemicalStepsDisplay(steps){
+  if(!steps||!steps.length) return `<p class="hint">None recorded.</p>`;
+  if(steps.length===1) return `<p style="margin:6px 0 0;font-size:13px;line-height:1.6;">${esc(steps[0])}</p>`;
+  return `<ol style="margin:6px 0 0;padding-left:20px;font-size:13px;line-height:1.9;">
+    ${steps.map(s=>`<li>${esc(s)}</li>`).join('')}
+  </ol>`;
+}
+function measurementValueDisplay(m){
+  const parts=[];
+  if(m.text) return esc(m.text);
+  if(m.mean!=null&&m.mean!=='') parts.push(`${m.mean}${m.stddev!=null&&m.stddev!==''?' ± '+m.stddev:''} ${esc(m.unit||'')}`.trim());
+  if(m.min!=null&&m.max!=null) parts.push(`${m.min}–${m.max} ${esc(m.unit||'')}`.trim());
+  else if(m.min!=null) parts.push(`≥ ${m.min} ${esc(m.unit||'')}`.trim());
+  else if(m.max!=null) parts.push(`≤ ${m.max} ${esc(m.unit||'')}`.trim());
+  if(!parts.length) return '<span class="hint" style="margin:0;">No data</span>';
+  return parts.join(' · ');
+}
+afterRender.detail=function(){
+  document.getElementById('app').querySelectorAll('[data-toggle-why]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const panel=document.getElementById('why-'+btn.dataset.toggleWhy);
+      panel.style.display=panel.style.display==='none'?'block':'none';
+    });
+  });
+  document.getElementById('app').querySelectorAll('[data-edit-variant]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const v=variantById(btn.dataset.editVariant);
+      if(v) loadVariantIntoWizard(v);
+    });
+  });
+};
+
+/* ============================= COMPARE VIEW ============================= */
+function renderCompare(){
+  const a=variantById(state.compareA),b=variantById(state.compareB);
+  function col(v,other,side){
+    if(!v) return`<div class="compare-col"><p class="hint">Select a variant.</p></div>`;
+    const measByProp={};v.measurements.forEach(m=>measByProp[m.property]=m);
+    const otherByProp={};other&&other.measurements.forEach(m=>otherByProp[m.property]=m);
+    const allProps=Array.from(new Set([...v.measurements.map(m=>m.property),...(other?other.measurements.map(m=>m.property):[])]) );
+    return`<div class="compare-col">
+      <div class="compare-select">
+        <select data-compare-select="${side}">${state.variants.map(vv=>`<option value="${vv.id}" ${vv.id===v.id?'selected':''}>${esc(familyOf(vv).name)} — ${esc(vv.name)}</option>`).join('')}</select>
+      </div>
+      ${swatchSVG(v,90)}
+      <div class="compare-row"><div class="cr-label">Thickness</div><div>${fmt3(v.specimen.thickness)??'—'} mm</div></div>
+      <div class="compare-row"><div class="cr-label">Drying</div><div>${esc(v.recipe.dryingMethod)}</div></div>
+      <div class="compare-row"><div class="cr-label">Cultivation</div><div>${esc(v.recipe.cultivationPeriod||'—')}</div></div>
+      <div class="compare-row"><div class="cr-label">Treatment</div><div>${(v.recipe.chemicalSteps&&v.recipe.chemicalSteps.length)?(v.recipe.chemicalSteps.length===1?esc(v.recipe.chemicalSteps[0]):v.recipe.chemicalSteps.map((s,i)=>`${i+1}. ${esc(s)}`).join('<br>')):'None'}</div></div>
+      <div class="compare-row"><div class="cr-label">Reads as</div><div>${topDescriptors(v,4).map(esc).join(', ')||'—'}</div></div>
+      ${allProps.map(p=>{
+        const m=measByProp[p],om=otherByProp[p];
+        const val=m?measurementValueDisplay(m):'<span class="hint" style="margin:0;">No data</span>';
+        const vBase=m?numericMeasureValue(m):null,oBase=om?numericMeasureValue(om):null;
+        const differs=vBase!=null&&oBase!=null&&Math.abs(vBase-oBase)>1e-9;
+        return`<div class="compare-row"><div class="cr-label">${esc(p)}</div><div>${val}${differs?'<span class="delta-flag">changed by process</span>':''}</div></div>`;
+      }).join('')}
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn ghost" data-goto-detail="${v.id}" style="flex:1;">Open full profile</button>
+        <button class="btn edit" data-edit-variant="${v.id}" style="flex:1;">Edit</button>
+      </div>
+    </div>`;
+  }
+  return`<div class="card">
+    <div class="eyebrow">Compare</div>
+    <h3>How did processing change the experience?</h3>
+    <p class="hint">Pick two variants — often two states of the same material family — to see how processing choices shifted both the measured properties and the way the material reads.</p>
+  </div>
+  <div class="compare-grid">${col(a,b,'A')}${col(b,a,'B')}</div>`;
+}
+afterRender.compare=function(){
+  document.querySelectorAll('[data-compare-select]').forEach(sel=>{
+    sel.addEventListener('change',()=>{
+      if(sel.dataset.compareSelect==='A') state.compareA=sel.value;else state.compareB=sel.value;
+      render();
+    });
+  });
+  document.querySelectorAll('[data-edit-variant]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const v=variantById(btn.dataset.editVariant);
+      if(v) loadVariantIntoWizard(v);
+    });
+  });
+};
+
+/* ============================= PROCESS EXPLORER ============================= */
+function renderProcess(){
+  const famVariants=state.variants.filter(v=>v.familyId===state.processFamily);
+  const dryingMethods=Array.from(new Set(famVariants.map(v=>v.recipe.dryingMethod)));
+  if(!state.processDrying) state.processDrying=dryingMethods[0];
+  const thicknesses=famVariants.map(v=>v.specimen.thickness).filter(t=>typeof t==='number');
+  const minT=Math.min(...thicknesses),maxT=Math.max(...thicknesses);
+  if(!state.processThicknessInit){state.processThickness=thicknesses[0]||1;state.processThicknessInit=true;}
+  const treatments=Array.from(new Set(famVariants.map(v=>treatmentSummary(v))));
+  const candidates=famVariants.filter(v=>v.recipe.dryingMethod===state.processDrying);
+  let nearest=null,nearestDist=Infinity;
+  candidates.forEach(v=>{
+    const d=Math.abs((v.specimen.thickness||0)-state.processThickness);
+    if(d<nearestDist){nearestDist=d;nearest=v;}
+  });
+  const treatmentOk=nearest&&treatmentSummary(nearest)===state.processTreatment;
+  const thicknessTolerance=Math.max(0.5,(maxT-minT)*0.5||1);
+  const sufficient=nearest&&nearestDist<=thicknessTolerance;
+  let predictHtml='';
+  if(sufficient){
+    const profile=profileForVariant(nearest);
+    predictHtml=`
+      <div class="predict-row"><div class="predict-poles">papery</div><div class="predict-track"><div class="predict-dot" style="left:${profile.axisLeatherPaper}%;"></div></div><div class="predict-poles" style="text-align:right;">leathery</div></div>
+      <div class="predict-row"><div class="predict-poles">rigid</div><div class="predict-track"><div class="predict-dot" style="left:${profile.axisRigidFlexible}%;"></div></div><div class="predict-poles" style="text-align:right;">flexible</div></div>
+      <div class="predict-row"><div class="predict-poles">opaque</div><div class="predict-track"><div class="predict-dot" style="left:${profile.axisOpaqueTranslucent}%;"></div></div><div class="predict-poles" style="text-align:right;">translucent</div></div>
+      <p class="hint">Closest observed variant: <b>${esc(nearest.name)}</b> (${fmt3(nearest.specimen.thickness)} mm, ${esc(nearest.recipe.dryingMethod)}${treatmentOk?', matching treatment':', treatment not an exact match'}). Reads as: ${topDescriptors(nearest,4).map(esc).join(', ')}.</p>
+      <div style="display:flex;gap:8px;">
+        <button class="btn ghost" data-goto-detail="${nearest.id}">View full profile</button>
+        <button class="btn edit" data-edit-variant="${nearest.id}">Edit this variant</button>
+      </div>`;
+  }else{
+    predictHtml=`<div class="insufficient">Insufficient observations for a reliable prediction at this combination of drying method, thickness and treatment.</div>`;
+  }
+  return`<div class="card">
+    <div class="eyebrow">Process → Outcome</div>
+    <h3>${esc(state.families.find(f=>f.id===state.processFamily).name)}</h3>
+    <p class="hint">Choose a drying method, thickness and treatment to see the closest observed or predicted experiential outcome.</p>
+    <div class="field">
+      <label class="field-label">Material family</label>
+      <select id="procFamily">${state.families.map(f=>`<option value="${f.id}" ${f.id===state.processFamily?'selected':''}>${esc(f.name)}</option>`).join('')}</select>
+    </div>
+    <div class="process-controls">
+      <div>
+        <label class="field-label">Drying method</label>
+        <select id="procDrying">${dryingMethods.map(d=>`<option value="${esc(d)}" ${d===state.processDrying?'selected':''}>${esc(d)}</option>`).join('')}</select>
+      </div>
+      <div>
+        <label class="field-label">Thickness — ${state.processThickness.toFixed(3)} mm</label>
+        <input type="range" id="procThickness" min="${minT}" max="${maxT}" step="0.05" value="${state.processThickness}">
+      </div>
+      <div>
+        <label class="field-label">Treatment</label>
+        <select id="procTreatment">${treatments.map(t=>`<option value="${esc(t)}" ${t===state.processTreatment?'selected':''}>${esc(t)}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div class="predict-out">
+      <div class="eyebrow" style="margin-bottom:10px;">Predicted / observed experience</div>
+      ${predictHtml}
+    </div>
+  </div>`;
+}
+afterRender.process=function(){
+  const famVariants=state.variants.filter(v=>v.familyId===state.processFamily);
+  if(!state.processTreatment||!famVariants.find(v=>treatmentSummary(v)===state.processTreatment)){
+    state.processTreatment=famVariants[0]?treatmentSummary(famVariants[0]):'None';
+  }
+  document.getElementById('procFamily').addEventListener('change',e=>{state.processFamily=e.target.value;state.processDrying=null;state.processThicknessInit=false;render();});
+  document.getElementById('procDrying').addEventListener('change',e=>{state.processDrying=e.target.value;render();});
+  document.getElementById('procTreatment').addEventListener('change',e=>{state.processTreatment=e.target.value;render();});
+  document.getElementById('procThickness').addEventListener('input',e=>{state.processThickness=parseFloat(e.target.value);render();});
+  document.querySelectorAll('[data-edit-variant]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const v=variantById(btn.dataset.editVariant);
+      if(v) loadVariantIntoWizard(v);
+    });
+  });
+};
+
+/* ============================= ADD / EDIT MATERIAL WIZARD ============================= */
+const WIZARD_STEPS=['Material family','Processing','Specimen','Measurements','Experience','Source'];
+function renderAdd(){
+  const w=state.wizard;
+  const step=w.step;
+  const isEditing=!!w.data.editingId;
+  const stepsHtml=WIZARD_STEPS.map((s,i)=>`<span class="${i===step?'active':i<step?'done':''}" ${isEditing?`data-step="${i}" style="cursor:pointer;"`:''}>${i+1}. ${s}</span>`).join('');
+
+  let body='';
+  if(step===0){
+    body=`
+      <div class="field">
+        <label class="field-label">Existing family</label>
+        <select id="wFamily">
+          <option value="">— choose or create new —</option>
+          ${state.families.map(f=>`<option value="${f.id}" ${w.data.familyId===f.id?'selected':''}>${esc(f.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label">Or new family name</label>
+        <input type="text" id="wNewFamily" value="${esc(w.data.newFamilyName)}" placeholder="e.g. Kombucha leather">
+      </div>
+      <div class="field">
+        <label class="field-label">Variant name</label>
+        <input type="text" id="wVariantName" value="${esc(w.data.variantName)}" placeholder="e.g. Salt-tanned / 1.5 mm">
+      </div>`;
+  }else if(step===1){
+    body=`
+      <p class="hint">Describe the processing sequence, cultivation, drying, and any chemical treatment.</p>
+      <div class="field"><label class="field-label">Process sequence (comma-separated)</label>
+        <input type="text" id="wSequence" value="${esc(w.data.processing.join(', '))}" placeholder="Cultivate, Wash, Press, Air dry"></div>
+      <div class="field"><label class="field-label">Cultivation period</label>
+        <input type="text" id="wCultivation" value="${esc(w.data.cultivationPeriod)}" placeholder="e.g. 10–14 days"></div>
+      <div class="field-row">
+        <div class="field"><label class="field-label">Drying method</label><input type="text" id="wDrying" value="${esc(w.data.dryingMethod)}" placeholder="e.g. Air dry"></div>
+        <div class="field"><label class="field-label">Drying temperature</label>
+          <div class="suffix-wrap"><input type="text" inputmode="decimal" id="wDryTemp" value="${esc(stripDegreeC(w.data.dryingTemp))}" placeholder="e.g. 22"><span class="suffix-label">°C</span></div>
+        </div>
+      </div>
+      <div class="field"><label class="field-label">Drying humidity</label><input type="text" id="wDryHum" value="${esc(w.data.dryingHumidity)}" placeholder="e.g. 50% RH"></div>
+      <div class="field">
+        <label class="field-label">Chemical treatment steps</label>
+        <div id="chemStepsList">
+          ${w.data.chemicalSteps.map((s,i)=>`<div class="step-row">
+            <div class="step-no">Step ${i+1}</div>
+            <input type="text" data-chemstep="${i}" value="${esc(s)}" placeholder="e.g. 15% citric acid for 24 hrs">
+            <button class="chip" data-remove-chemstep="${i}" style="justify-content:center;">×</button>
+          </div>`).join('')||'<p class="hint" style="margin:0 0 8px;">No treatment steps added.</p>'}
+        </div>
+        <button class="btn ghost" id="addChemStep">+ Add step</button>
+      </div>`;
+  }else if(step===2){
+    body=`
+      <div class="field-row">
+        <div class="field"><label class="field-label">Thickness (mm)</label><input type="number" id="wThickness" value="${esc(w.data.thickness)}" step="0.001"></div>
+        <div class="field"><label class="field-label">Density (g/cm³)</label><input type="number" id="wDensity" value="${esc(w.data.density)}" step="0.001"></div>
+      </div>
+      <div class="field"><label class="field-label">Moisture content</label><input type="text" id="wMoisture" value="${esc(w.data.moisture)}" placeholder="e.g. 8–10%"></div>
+      <div class="field"><label class="field-label">Porosity</label><input type="text" id="wPorosity" value="${esc(w.data.porosity)}" placeholder="e.g. Low, Low–moderate, High, or 12%"></div>`;
+  }else if(step===3){
+    body=`
+      <p class="hint">Add measured properties — only values obtainable on the Mecmesin Omnitest 5 (tensile) or SDL Atlas Fabric Touch Tester are selectable. Leave unmeasured properties out entirely — never fabricate a value. Use min/max for a reported range, or mean ± uncertainty for a single measurement.</p>
+      <div class="eyebrow" style="margin:10px 0 4px;">Property · Unit · Min · Max · Mean · ± Uncertainty</div>
+      <div id="measList">
+        ${w.data.measurements.map((m,i)=>renderMeasRow(m,i)).join('')}
+      </div>
+      <button class="btn ghost" id="addMeasRow">+ Add measurement</button>`;
+  }else if(step===4){
+    body=`
+      <p class="hint">Describe what it feels, looks, sounds, smells, or behaves like. Write freely — metaphors and comparisons are welcome.</p>
+      <div class="field"><textarea id="wDescInput" placeholder="e.g. papery, translucent, or 'feels like dried onion skin'"></textarea></div>
+      <button class="btn ghost" id="wAddDesc">+ Add as descriptor(s)</button>
+      <div class="chip-row" style="margin-top:10px;">
+        ${w.data.descriptors.map((d,i)=>`<span class="chip">${esc(d)}<button data-remove-wdesc="${i}">×</button></span>`).join('')||'<span class="hint" style="margin:0;">No descriptors added yet.</span>'}
+      </div>`;
+  }else if(step===5){
+    body=`
+      <div class="field"><label class="field-label">Source title / provenance note</label><input type="text" id="wSourceTitle" value="${esc(w.data.sourceTitle)}" placeholder="e.g. Studio trial, 04 Aug 2026"></div>
+      <div class="field"><label class="field-label">Source type</label>
+        <select id="wSourceType">
+          ${['User-submitted','Literature','Manufacturer data','Community observation','Derived / calculated'].map(t=>`<option ${w.data.sourceType===t?'selected':''}>${t}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label class="field-label">Notes</label><textarea id="wNotes">${esc(w.data.notes)}</textarea></div>
+      <div class="card" style="background:var(--surface-2);">
+        <div class="eyebrow">Review</div>
+        <p class="hint">Family: <b>${esc(w.data.newFamilyName||state.families.find(f=>f.id===w.data.familyId)?.name||'—')}</b> · Variant: <b>${esc(w.data.variantName||'—')}</b> · ${w.data.descriptors.length} descriptors · ${w.data.measurements.length} measurements</p>
+        ${isEditing?`<p class="hint" style="color:var(--brass);">Saving will overwrite the existing entry in place.</p>`:''}
+      </div>`;
+  }
+
+  return`<div class="card">
+    ${isEditing?`<div class="edit-banner">✏️  <div><b>Editing: ${esc(variantById(w.data.editingId)?.name||'')}</b><br>Click any section above to jump straight to it, make your change, and hit Save — you don't need to step through the rest.</div></div>`:''}
+    <div class="eyebrow">${isEditing?'Edit material':'Add material'}</div>
+    <h3>${isEditing?'Edit existing variant':'Contribute a new material variant'}</h3>
+    <div class="wizard-steps">${stepsHtml}</div>
+    ${body}
+    <div class="wizard-nav">
+      <button class="btn ghost" id="wBack" ${step===0?'disabled':''}>← Back</button>
+      <div style="display:flex;gap:8px;">
+        ${isEditing?`<button class="btn danger" id="wCancelEdit">Cancel edit</button>`:''}
+        ${step<WIZARD_STEPS.length-1?`<button class="btn ${isEditing?'ghost':''}" id="wNext">Next →</button>`:''}
+        ${(isEditing||step===WIZARD_STEPS.length-1)?`<button class="btn" id="wSubmit">${isEditing?'Save changes':'Save to library'}</button>`:''}
+      </div>
+    </div>
+  </div>`;
+}
+function stripDegreeC(s){
+  if(!s) return '';
+  const m=String(s).match(/-?\d+\.?\d*/);
+  return m?m[0]:String(s).replace(/°?C/gi,'').trim();
+}
+function renderMeasRow(m,i){
+  const units=unitsForProperty(m.property);
+  const isLegacy=m.property&&!INSTRUMENT_PROPERTY_NAMES.includes(m.property);
+  return`<div class="meas-row">
+    <select data-meas="${i}-property">
+      <option value="">— choose property —</option>
+      ${isLegacy?`<option value="${esc(m.property)}" selected>${esc(m.property)} (legacy, not from these instruments)</option>`:''}
+      ${INSTRUMENT_PROPERTY_GROUPS.map(g=>`<optgroup label="${esc(g.group)}">${g.items.map(it=>`<option value="${esc(it.name)}" ${m.property===it.name?'selected':''}>${esc(it.label)}</option>`).join('')}</optgroup>`).join('')}
+    </select>
+    <select data-meas="${i}-unit" ${units.length?'':'disabled'}>
+      ${units.length?units.map(u=>`<option value="${esc(u.unit)}" ${m.unit===u.unit?'selected':''}>${esc(u.unit)}</option>`).join(''):'<option value="">—</option>'}
+    </select>
+    <input type="number" data-meas="${i}-min" value="${m.min??''}" placeholder="min">
+    <input type="number" data-meas="${i}-max" value="${m.max??''}" placeholder="max">
+    <input type="number" data-meas="${i}-mean" value="${m.mean??''}" placeholder="mean">
+    <input type="number" data-meas="${i}-stddev" value="${m.stddev??''}" placeholder="± uncert.">
+    <button class="chip" data-remove-meas="${i}" style="justify-content:center;">×</button>
+  </div>`;
+}
+afterRender.add=function(){
+  const w=state.wizard;
+  const isEditing=!!w.data.editingId;
+
+  // ---- live-bind fields so switching steps or adding/removing rows never loses typed data ----
+  function bindLive(id,path,transform){
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('input',()=>{ w.data[path]=transform?transform(el.value):el.value; });
+  }
+  if(step0Present()){
+    bindLive('wFamily','familyId');
+    bindLive('wNewFamily','newFamilyName');
+    bindLive('wVariantName','variantName');
+  }
+  if(document.getElementById('wSequence')){
+    document.getElementById('wSequence').addEventListener('input',e=>{w.data.processing=e.target.value.split(',').map(s=>s.trim()).filter(Boolean);});
+    bindLive('wCultivation','cultivationPeriod');
+    bindLive('wDrying','dryingMethod');
+    document.getElementById('wDryTemp').addEventListener('input',e=>{const v=e.target.value.trim();w.data.dryingTemp=v!==''?v+'°C':'';});
+    bindLive('wDryHum','dryingHumidity');
+  }
+  if(document.getElementById('wThickness')){
+    bindLive('wThickness','thickness');
+    bindLive('wDensity','density');
+    bindLive('wMoisture','moisture');
+    bindLive('wPorosity','porosity');
+  }
+  if(document.getElementById('wSourceTitle')){
+    bindLive('wSourceTitle','sourceTitle');
+    bindLive('wSourceType','sourceType');
+    bindLive('wNotes','notes');
+  }
+  function step0Present(){return !!document.getElementById('wFamily');}
+
+  function capture(){
+    if(w.step===0){
+      const fam=document.getElementById('wFamily');if(fam) w.data.familyId=fam.value;
+      const nf=document.getElementById('wNewFamily');if(nf) w.data.newFamilyName=nf.value.trim();
+      const vn=document.getElementById('wVariantName');if(vn) w.data.variantName=vn.value.trim();
+    }else if(w.step===1){
+      const seq=document.getElementById('wSequence');if(seq) w.data.processing=seq.value.split(',').map(s=>s.trim()).filter(Boolean);
+      const cult=document.getElementById('wCultivation');if(cult) w.data.cultivationPeriod=cult.value.trim();
+      const dry=document.getElementById('wDrying');if(dry) w.data.dryingMethod=dry.value.trim();
+      const dt=document.getElementById('wDryTemp');if(dt) w.data.dryingTemp=dt.value.trim()!==''?dt.value.trim()+'°C':'';
+      const dh=document.getElementById('wDryHum');if(dh) w.data.dryingHumidity=dh.value.trim();
+    }else if(w.step===2){
+      const th=document.getElementById('wThickness');if(th) w.data.thickness=th.value;
+      const de=document.getElementById('wDensity');if(de) w.data.density=de.value;
+      const mo=document.getElementById('wMoisture');if(mo) w.data.moisture=mo.value.trim();
+      const po=document.getElementById('wPorosity');if(po) w.data.porosity=po.value.trim();
+    }else if(w.step===5){
+      const st=document.getElementById('wSourceTitle');if(st) w.data.sourceTitle=st.value.trim();
+      const sty=document.getElementById('wSourceType');if(sty) w.data.sourceType=sty.value;
+      const no=document.getElementById('wNotes');if(no) w.data.notes=no.value.trim();
+    }
+  }
+
+  document.getElementById('wBack')?.addEventListener('click',()=>{capture();w.step=Math.max(0,w.step-1);render();});
+  document.getElementById('wNext')?.addEventListener('click',()=>{capture();w.step=Math.min(WIZARD_STEPS.length-1,w.step+1);render();});
+  if(isEditing){
+    document.querySelectorAll('.wizard-steps span[data-step]').forEach(el=>{
+      el.addEventListener('click',()=>{
+        capture();
+        w.step=parseInt(el.dataset.step);
+        render();
+      });
+    });
+  }
+  document.getElementById('wCancelEdit')?.addEventListener('click',()=>{
+    state.wizard={step:0,data:freshWizardData()};
+    state.view='detail';
+    render();
+  });
+  document.getElementById('addMeasRow')?.addEventListener('click',()=>{w.data.measurements.push({property:'',min:null,max:null,mean:null,stddev:null,unit:''});render();});
+  document.getElementById('addChemStep')?.addEventListener('click',()=>{capture();w.data.chemicalSteps.push('');render();});
+  document.querySelectorAll('[data-remove-chemstep]').forEach(b=>b.addEventListener('click',()=>{capture();w.data.chemicalSteps.splice(parseInt(b.dataset.removeChemstep),1);render();}));
+  document.querySelectorAll('[data-chemstep]').forEach(inp=>inp.addEventListener('input',()=>{w.data.chemicalSteps[parseInt(inp.dataset.chemstep)]=inp.value;}));
+  document.querySelectorAll('[data-remove-meas]').forEach(b=>b.addEventListener('click',()=>{w.data.measurements.splice(parseInt(b.dataset.removeMeas),1);render();}));
+  document.querySelectorAll('[data-meas]').forEach(inp=>{
+    const evt=inp.tagName==='SELECT'?'change':'input';
+    inp.addEventListener(evt,()=>{
+      const[i,field]=inp.dataset.meas.split('-');
+      const idx=parseInt(i);
+      if(field==='property'){
+        w.data.measurements[idx].property=inp.value;
+        // reset unit if it no longer matches the new property's allowed units
+        const allowed=unitsForProperty(inp.value).map(u=>u.unit);
+        if(!allowed.includes(w.data.measurements[idx].unit)) w.data.measurements[idx].unit=allowed[0]||'';
+        render();
+        return;
+      }
+      const val=(field==='min'||field==='max'||field==='mean'||field==='stddev')?(inp.value===''?null:parseFloat(inp.value)):inp.value;
+      w.data.measurements[idx][field]=val;
+    });
+  });
+  document.getElementById('wAddDesc')?.addEventListener('click',()=>{
+    const ta=document.getElementById('wDescInput');
+    const parts=ta.value.split(/[,\n]/).map(s=>s.trim()).filter(Boolean);
+    w.data.descriptors.push(...parts);
+    ta.value='';render();
+  });
+  document.querySelectorAll('[data-remove-wdesc]').forEach(b=>b.addEventListener('click',()=>{w.data.descriptors.splice(parseInt(b.dataset.removeWdesc),1);render();}));
+
+  document.getElementById('wSubmit')?.addEventListener('click',()=>{
+    capture();
+    let famId=w.data.familyId;
+    let newFamilyObj=null;
+    if(!famId&&w.data.newFamilyName){
+      // When editing, don't create a duplicate family if the name matches an existing one
+      const existingFam=state.families.find(f=>f.name.toLowerCase()===w.data.newFamilyName.toLowerCase());
+      if(existingFam){
+        famId=existingFam.id;
+      }else{
+        famId='uf-'+Date.now();
+        newFamilyObj={id:famId,name:w.data.newFamilyName,origin:'User-submitted',matClass:'User-submitted',desc:''};
+        state.families.push(newFamilyObj);
+      }
+    }
+    if(!famId||!w.data.variantName){alert('Please provide at least a family and a variant name (step 1).');w.step=0;render();return;}
+    if(variantNameExists(w.data.variantName,isEditing?w.data.editingId:null)){alert('A material titled "'+w.data.variantName+'" already exists. Please choose a different title.');w.step=0;render();return;}
+
+    const obs=w.data.descriptors.map(text=>({
+      id:'uo-'+Math.random(),
+      variantId:isEditing?w.data.editingId:'new',
+      text,normalized:text.toLowerCase(),
+      dimension:SemanticEngine.classify(text),
+      confidence:'user reported',
+      source:w.data.sourceTitle||'User-submitted'
+    }));
+    const meas=w.data.measurements.filter(m=>m.property).map(m=>({
+      id:'um-'+Math.random(),
+      variantId:isEditing?w.data.editingId:'new',
+      property:m.property,unit:m.unit,min:m.min,max:m.max,mean:m.mean,stddev:m.stddev,
+      category:catalogEntry(m.property)?.category||m.category||'User-submitted',
+      confidence:'low',method:m.method||'User-reported',
+      source:w.data.sourceTitle||'User-submitted'
+    }));
+
+    if(isEditing){
+      // ---- UPDATE existing variant in place ----
+      const idx=state.variants.findIndex(v=>v.id===w.data.editingId);
+      if(idx<0){alert('Could not find the variant to edit.');return;}
+      const existing=state.variants[idx];
+      const updated={
+        ...existing,
+        familyId:famId,
+        name:w.data.variantName,
+        recipe:{
+          ...existing.recipe,
+          sequence:w.data.processing.length?w.data.processing:existing.recipe.sequence,
+          cultivationPeriod:w.data.cultivationPeriod||existing.recipe.cultivationPeriod,
+          dryingMethod:w.data.dryingMethod||existing.recipe.dryingMethod,
+          dryingTemp:w.data.dryingTemp||existing.recipe.dryingTemp,
+          dryingHumidity:w.data.dryingHumidity||existing.recipe.dryingHumidity,
+          chemicalSteps:w.data.chemicalSteps.filter(s=>s.trim())
+        },
+        specimen:{
+          ...existing.specimen,
+          thickness:w.data.thickness!==''?parseFloat(w.data.thickness):existing.specimen.thickness,
+          density:w.data.density!==''?parseFloat(w.data.density):existing.specimen.density,
+          moistureContent:w.data.moisture||existing.specimen.moistureContent,
+          porosity:w.data.porosity||existing.specimen.porosity
+        },
+        observations:obs,
+        measurements:meas,
+        sources:[w.data.sourceTitle||existing.sources[0]||'User-submitted'],
+        notes:w.data.notes||existing.notes,
+        _edited:true,
+        _editedAt:Date.now()
+      };
+      state.variants[idx]=updated;
+      state.mapPositions=computeMapPositions(state.variants);
+      state.selectedVariantId=updated.id;
+      state.wizard={step:0,data:freshWizardData()};
+      cacheLocally();
+      cloudUpsert('variant',updated);
+      state.view='detail';
+      render();
+      if(state.engineMode==='ml'&&MLEngine.status==='ready'){
+        MLEngine.embedAll(obs.map(o=>o.text)).then(()=>{state.mapPositions=computeMapPositions(state.variants);render();});
+      }
+    }else{
+      // ---- CREATE new variant ----
+      const id='uv-'+Date.now();
+      obs.forEach(o=>o.variantId=id);
+      meas.forEach(m=>m.variantId=id);
+      const variant={
+        id,familyId:famId,name:w.data.variantName,
+        recipe:{sequence:w.data.processing.length?w.data.processing:['Not specified'],cultivationPeriod:w.data.cultivationPeriod||'Not specified',dryingMethod:w.data.dryingMethod||'Not specified',dryingTemp:w.data.dryingTemp,dryingHumidity:w.data.dryingHumidity,chemicalSteps:w.data.chemicalSteps.filter(s=>s.trim())},
+        specimen:{thickness:parseFloat(w.data.thickness)||null,density:parseFloat(w.data.density)||null,moistureContent:w.data.moisture,porosity:w.data.porosity||'Not specified'},
+        observations:obs,measurements:meas,
+        sources:[w.data.sourceTitle||'User-submitted ('+w.data.sourceType+')'],
+        notes:w.data.notes,mock:false,createdAt:Date.now()
+      };
+      state.variants.push(variant);
+      state.mapPositions=computeMapPositions(state.variants);
+      state.selectedVariantId=id;
+      state.wizard={step:0,data:freshWizardData()};
+      cacheLocally();
+      if(newFamilyObj) cloudUpsert('family',newFamilyObj);
+      cloudUpsert('variant',variant);
+      state.view='detail';
+      render();
+      if(state.engineMode==='ml'&&MLEngine.status==='ready'){
+        MLEngine.embedAll(obs.map(o=>o.text)).then(()=>{state.mapPositions=computeMapPositions(state.variants);render();});
+      }
+    }
+  });
+};
+
+/* ============================= LIBRARY VIEW ============================= */
+function renderLibrary(){
+  const f=state.libFilters;
+  let list=state.variants.slice();
+  if(f.family) list=list.filter(v=>v.familyId===f.family);
+  if(f.drying) list=list.filter(v=>v.recipe.dryingMethod===f.drying);
+  if(f.descriptor) list=list.filter(v=>v.observations.some(o=>o.text.toLowerCase().includes(f.descriptor.toLowerCase())));
+  if(f.minConfidence) list=list.filter(v=>confBucket(v.measurements)===f.minConfidence);
+  const dryingOptions=Array.from(new Set(state.variants.map(v=>v.recipe.dryingMethod))).filter(Boolean);
+  return`<div class="card">
+    <div class="eyebrow">Library</div>
+    <h3>Manage the material dataset</h3>
+    <div class="lib-filters">
+      <div><label class="field-label">Family</label><select id="libFamily"><option value="">All</option>${state.families.map(fam=>`<option value="${fam.id}" ${f.family===fam.id?'selected':''}>${esc(fam.name)}</option>`).join('')}</select></div>
+      <div><label class="field-label">Drying method</label><select id="libDrying"><option value="">All</option>${dryingOptions.map(d=>`<option value="${esc(d)}" ${f.drying===d?'selected':''}>${esc(d)}</option>`).join('')}</select></div>
+      <div><label class="field-label">Descriptor contains</label><input type="text" id="libDescriptor" value="${esc(f.descriptor)}" placeholder="e.g. leathery"></div>
+      <div><label class="field-label">Data confidence</label><select id="libConfidence"><option value="">All</option><option value="high" ${f.minConfidence==='high'?'selected':''}>High</option><option value="medium" ${f.minConfidence==='medium'?'selected':''}>Medium</option><option value="low" ${f.minConfidence==='low'?'selected':''}>Low</option></select></div>
+    </div>
+    <div class="lib-actions">
+      <button class="btn ghost" id="libExport">Export dataset (JSON)</button>
+      <label class="btn ghost" style="cursor:pointer;">Import JSON<input type="file" id="libImport" accept="application/json" style="display:none;"></label>
+      <button class="btn" data-tab="add">+ Add material</button>
+    </div>
+    <table class="data-table">
+      <thead><tr><th>Family</th><th>Variant</th><th>Thickness</th><th>Drying</th><th>Top descriptors</th><th>Completeness</th><th>Source</th><th></th></tr></thead>
+      <tbody>
+        ${list.map(v=>{
+          const completeness=Math.round(((v.observations.length>0?1:0)+(v.measurements.length>0?1:0)+(v.specimen.thickness?1:0)+(v.recipe.dryingMethod&&v.recipe.dryingMethod!=='Not specified'?1:0))/4*100);
+          return`<tr>
+            <td>${esc(familyOf(v).name)}</td>
+            <td>${esc(v.name)} ${v.mock&&!v._edited?'<span class="badge mock">demo</span>':''} ${!v.mock?'<span class="badge user">user</span>':''} ${v._edited?'<span class="badge user">edited</span>':''}</td>
+            <td>${fmt3(v.specimen.thickness)??'—'} mm</td>
+            <td>${esc(v.recipe.dryingMethod||'—')}</td>
+            <td>${topDescriptors(v,3).map(esc).join(', ')||'—'}</td>
+            <td><span class="completeness-bar"><i style="width:${completeness}%"></i></span>${completeness}%</td>
+            <td class="mono" style="font-size:11px;">${v.mock&&!v._edited?'Demo':v._edited?'Demo+edited':'User'}</td>
+            <td style="white-space:nowrap;display:flex;gap:4px;">
+              <button class="btn ghost" data-goto-detail="${v.id}" style="padding:5px 8px;font-size:11px;">View</button>
+              <button class="btn edit" data-edit-variant="${v.id}" style="padding:5px 8px;font-size:11px;">Edit</button>
+              ${!v.mock?`<button class="btn danger" data-delete-variant="${v.id}" style="padding:5px 8px;font-size:11px;">Delete</button>`:''}
+            </td>
+          </tr>`;
+        }).join('')||`<tr><td colspan="8" class="hint">No variants match these filters.</td></tr>`}
+      </tbody>
+    </table>
+  </div>`;
+}
+afterRender.library=function(){
+  document.getElementById('libFamily').addEventListener('change',e=>{state.libFilters.family=e.target.value;render();});
+  document.getElementById('libDrying').addEventListener('change',e=>{state.libFilters.drying=e.target.value;render();});
+  document.getElementById('libDescriptor').addEventListener('input',e=>{state.libFilters.descriptor=e.target.value;render();});
+  document.getElementById('libConfidence').addEventListener('change',e=>{state.libFilters.minConfidence=e.target.value;render();});
+  document.getElementById('libExport').addEventListener('click',()=>{
+    const blob=new Blob([JSON.stringify({families:state.families,variants:state.variants},null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download='biomaterials-library-export.json';a.click();
+    URL.revokeObjectURL(url);
+  });
+  document.getElementById('libImport').addEventListener('change',e=>{
+    const file=e.target.files[0];if(!file) return;
+    const reader=new FileReader();
+    reader.onload=()=>{
+      try{
+        const parsed=JSON.parse(reader.result);
+        if(Array.isArray(parsed.families)) parsed.families.forEach(f=>{if(!state.families.find(x=>x.id===f.id)){state.families.push(f);if(!FAMILIES.find(x=>x.id===f.id)) cloudUpsert('family',f);}});
+        if(Array.isArray(parsed.variants)) parsed.variants.forEach(v=>{if(!state.variants.find(x=>x.id===v.id)){const vv={...v,mock:false};state.variants.push(vv);cloudUpsert('variant',vv);}});
+        state.mapPositions=computeMapPositions(state.variants);
+        cacheLocally();render();
+        if(state.engineMode==='ml'&&MLEngine.status==='ready'){
+          const newTexts=(parsed.variants||[]).flatMap(v=>(v.observations||[]).map(o=>o.text));
+          MLEngine.embedAll(newTexts).then(()=>{state.mapPositions=computeMapPositions(state.variants);render();});
+        }
+      }catch(err){alert('Could not parse that file as a valid library export.');}
+    };
+    reader.readAsText(file);
+  });
+  document.querySelectorAll('[data-edit-variant]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const v=variantById(btn.dataset.editVariant);
+      if(v) loadVariantIntoWizard(v);
+    });
+  });
+  document.querySelectorAll('[data-delete-variant]').forEach(b=>b.addEventListener('click',()=>{
+    if(!confirm('Remove this variant from the library? '+(cloud?'This removes it for everyone using the shared library.':'This only affects your local copy.'))) return;
+    const id=b.dataset.deleteVariant;
+    state.variants=state.variants.filter(v=>v.id!==id);
+    state.mapPositions=computeMapPositions(state.variants);
+    cacheLocally();
+    cloudDelete('variant',id);
+    render();
+  }));
+};
+
+/* ============================= ABOUT VIEW ============================= */
+function renderAbout(){
+  return`<div class="card">
+    <div class="eyebrow">About this tool</div>
+    <h3>An exploratory map, not a spreadsheet</h3>
+    <p class="hint" style="max-width:70ch;">This prototype treats a "material" as a family of possible states rather than one fixed specification. The same biological substrate, dried, pressed, or treated differently, can occupy a very different region of experience — from papery and crisp to leathery and supple.</p>
+    <div class="diagram-box">EXPERIENCE
+    ↑↓
+human language
+    ↑↓
+SEMANTIC SPACE
+    ↑↓
+MATERIAL BEHAVIOUR
+    ↑↓
+PHYSICAL PROPERTIES
+    ↑↓
+SPECIMEN → PROCESS → MATERIAL FAMILY</div>
+  </div>
+  <div class="card">
+    <h3>Data principles</h3>
+    <ul style="line-height:1.9;">
+      <li>Never collapse a material family into one fixed property set.</li>
+      <li>Never overwrite measurements when new measurements are added.</li>
+      <li>Preserve original experiential language, exactly as written.</li>
+      <li>Never treat subjective descriptors as objective measurements.</li>
+      <li>Never fabricate scientific values — missing data is shown as missing.</li>
+      <li>Always preserve provenance and represent uncertainty.</li>
+      <li>Treat thickness, geometry and environmental conditions as variables, not metadata.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>Shared library status</h3>
+    <p class="hint">${cloud?(cloudStatus==='connected'?'Connected to a shared backend — materials added here are visible to every visitor, and vice versa.':'A shared backend is configured but could not be reached — changes are only saved to this browser for now.'):'No shared backend is configured. Additions made here are saved only to this browser (localStorage) and are not visible to other visitors.'}</p>
+  </div>
+  <div class="card">
+    <h3>Semantic engine</h3>
+    <p class="hint">The current build uses a small deterministic mock embedding (lexicon + hashed fallback, 8 dimensions) so semantic clustering, search and the material map work end-to-end without external services.</p>
+  </div>`;
+}
+
+/* ============================= GLOBAL EVENTS ============================= */
+document.addEventListener('click',e=>{
+  const tabBtn=e.target.closest('[data-tab]');
+  if(tabBtn){
+    // Clicking the Add tab when in edit mode should cancel the edit
+    if(tabBtn.dataset.tab==='add'&&state.wizard.data.editingId){
+      state.wizard={step:0,data:freshWizardData()};
+    }
+    state.view=tabBtn.dataset.tab;render();return;
+  }
+  const gotoDetail=e.target.closest('[data-goto-detail]');
+  if(gotoDetail){state.selectedVariantId=gotoDetail.dataset.gotoDetail;state.view='detail';render();return;}
+  const selVar=e.target.closest('[data-select-variant]');
+  if(selVar){state.selectedVariantId=selVar.dataset.selectVariant;render();return;}
+  const removeDesc=e.target.closest('[data-remove-desc]');
+  if(removeDesc){state.describeQuery.splice(parseInt(removeDesc.dataset.removeDesc),1);render();return;}
+  const legend=e.target.closest('[data-legend]');
+  if(legend){const id=legend.dataset.legend;state.legendOff[id]=!state.legendOff[id];render();return;}
+  const clickDesc=e.target.closest('[data-click-descriptor]');
+  if(clickDesc){state.view='explore';state.describeQuery=[clickDesc.dataset.clickDescriptor];render();return;}
+  if(!e.target.closest('.search-box')){const sr=document.getElementById('searchResults');if(sr) sr.innerHTML='';}
+});
+
+function runGlobalSearch(q){
+  const box=document.getElementById('searchResults');
+  if(!q){box.innerHTML='';return;}
+  const results=[];
+  const qVec=SemanticEngine.semanticEmbed(q);
+  state.variants.forEach(v=>{
+    const fam=familyOf(v);
+    const hay=[v.name,fam.name,v.recipe.dryingMethod,v.recipe.cultivationPeriod,...(v.recipe.chemicalSteps||[]),...v.observations.map(o=>o.text),...v.measurements.map(m=>m.property),...v.sources].join(' ').toLowerCase();
+    if(hay.includes(q)) results.push(v);
+    else if(SemanticEngine.similarity(qVec,variantSemanticEmbedding(v))>0.55) results.push(v);
+  });
+  box.className='search-results';
+  box.innerHTML=results.length?results.slice(0,8).map(v=>`<div class="sr-item" data-goto-detail="${v.id}"><div class="sr-fam">${esc(familyOf(v).name)}</div>${esc(v.name)}</div>`).join('')
+    :`<div class="sr-empty">No matches for "${esc(q)}".</div>`;
+}
+document.getElementById('globalSearch').addEventListener('input',e=>{
+  const q=e.target.value.trim().toLowerCase();
+  runGlobalSearch(q);
+  if(state.engineMode==='ml'&&q&&MLEngine.status==='ready'&&!MLEngine.cache[q]){
+    MLEngine.embed(q).then(()=>{if(document.getElementById('globalSearch').value.trim().toLowerCase()===q) runGlobalSearch(q);});
+  }
+});
+
+/* ---------------- semantic engine mode switching ---------------- */
+function setEngineNote(text){const el=document.getElementById('engineNote');if(el) el.textContent=text;}
+async function activateEnhancedEngine(){
+  setEngineNote('Downloading model (first time only, ~25MB, cached after)…');
+  const ok=await MLEngine.ensureLoaded();
+  if(!ok){
+    state.engineMode='fast';
+    document.getElementById('engineModeSelect').value='fast';
+    setEngineNote('Could not load the ML model — staying on Fast mode.');
+    return;
+  }
+  setEngineNote('Embedding library descriptors…');
+  const allTexts=state.variants.flatMap(v=>v.observations.map(o=>o.text));
+  await MLEngine.embedAll(allTexts);
+  state.mapPositions=computeMapPositions(state.variants);
+  setEngineNote('Enhanced mode active — real sentence embeddings, computed locally in your browser.');
+  render();
+}
+document.getElementById('engineModeSelect').addEventListener('change',async e=>{
+  const mode=e.target.value;
+  state.engineMode=mode;
+  try{localStorage.setItem('biomat-engine-mode',mode);}catch(err){}
+  if(mode==='ml'){await activateEnhancedEngine();}
+  else{setEngineNote('Fast mode — deterministic, offline, no download required.');state.mapPositions=computeMapPositions(state.variants);render();}
+});
+
+/* ============================= INIT ============================= */
+(async function init(){
+  document.getElementById('syncStatus').textContent=cloud?'connecting…':'local only (no shared backend)';
+  await loadUserData();
+  const statusText={'connected':'✓ shared library connected','error':'⚠ shared library unreachable — using local copy','not-configured':'local only (no shared backend)'}[cloudStatus];
+  document.getElementById('syncStatus').textContent=statusText;
+  let savedMode='fast';
+  try{savedMode=localStorage.getItem('biomat-engine-mode')||'fast';}catch(e){}
+  document.getElementById('engineModeSelect').value=savedMode;
+  setEngineNote(savedMode==='ml'?'Enhanced mode selected — loading…':'Fast mode — deterministic, offline, no download required.');
+  render();
+  if(savedMode==='ml'){state.engineMode='ml';await activateEnhancedEngine();}
+})();
+
+})();
+</script>
+</body>
+</html>
