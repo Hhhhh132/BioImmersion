@@ -108,6 +108,16 @@ input[type="range"]{width:100%;accent-color:var(--brass);}
 .legend-chip .dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
 .legend-chip.off{opacity:0.35;}
 .map-hint{position:absolute;top:10px;right:10px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--graphite);background:rgba(249,250,246,0.9);padding:4px 8px;border-radius:10px;border:1px solid var(--line);}
+.color-by-toggle{position:absolute;top:52px;left:10px;background:rgba(249,250,246,0.95);border:1px solid var(--line);border-radius:var(--radius-sm);padding:4px;display:flex;gap:4px;z-index:10;max-width:200px;}
+.color-by-toggle select{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 6px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);width:100%;}
+.color-scale-legend{position:absolute;bottom:10px;right:10px;background:rgba(249,250,246,0.92);border:1px solid var(--line);border-radius:var(--radius-sm);padding:7px 9px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--ink-soft);max-width:180px;}
+.color-scale-legend .csl-label{text-transform:uppercase;letter-spacing:0.05em;color:var(--graphite);margin-bottom:4px;}
+.color-scale-bar{width:100%;height:8px;border-radius:4px;margin:3px 0;}
+.color-scale-range{display:flex;justify-content:space-between;}
+.color-scale-nodata{display:flex;align-items:center;gap:5px;margin-top:5px;color:var(--graphite);}
+.color-scale-nodata .dot-hollow{width:8px;height:8px;border-radius:50%;border:1.3px dashed var(--graphite);flex:none;}
+.corr-result{margin-top:10px;}
+.corr-result .conf{font-size:11px;padding:3px 9px;}
 .map-mode-toggle{position:absolute;top:10px;left:10px;background:rgba(249,250,246,0.95);border:1px solid var(--line);border-radius:var(--radius-sm);padding:4px;display:flex;gap:4px;z-index:10;}
 .map-mode-toggle select{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 6px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);}
 .ashby-axis-controls{position:absolute;top:10px;left:10px;background:rgba(249,250,246,0.95);border:1px solid var(--line);border-radius:var(--radius-sm);padding:6px;display:flex;flex-direction:column;gap:4px;z-index:10;max-width:200px;}
@@ -361,7 +371,7 @@ function hashVec(str){
 }
 function normalizeWord(w){return w.toLowerCase().trim().replace(/[.,!?;:'"]/g,'');}
 
-const ML_MODEL_ID = 'Xenova/all-MiniLM-L6-v2';
+const ML_MODEL_ID = 'Xenova/all-mpnet-base-v2';
 const MLEngine = {
   status:'idle',pipelinePromise:null,cache:{},
   async ensureLoaded(){
@@ -798,7 +808,12 @@ let state={
   searchOpen:false,
   engineMode:'fast',
   exploreMapMode:'semantic',
-  ashbyPlot:null
+  ashbyPlot:null,
+  mapColorBy:'family',
+  corrDescriptor:'',
+  corrProperty:'',
+  corrPropA:'',
+  corrPropB:''
 };
 function freshWizardData(){
   return{familyId:'',newFamilyName:'',variantName:'',processing:[],cultivationPeriod:'',dryingMethod:'',dryingTemp:'',dryingHumidity:'',chemicalSteps:[],thickness:'',density:'',moisture:'',porosity:'',measurements:[],descriptors:[],sourceTitle:'',sourceType:'User-submitted',notes:'',hydrationLinkId:'',
@@ -964,6 +979,111 @@ const CORRELATES={
   Translucent:['Low haze / opacity','Thin cross-section','Uniform fibril or gel structure'],
   Delicate:['Low tensile strength','Thin geometry','Reduced resistance to handling stress']
 };
+/* ============================= PHYSICAL-PROPERTY COLOR + CORRELATION HELPERS ============================= */
+// Minimum sample size before any correlation coefficient is shown at all — below this, coincidence
+// dominates and a number would misleadingly look authoritative. Chosen per the same "probabilistic and
+// contextual, never fixed" standard as the rest of the app's descriptor-association claims.
+const MIN_CORRELATION_N=6;
+function propertyValueForVariant(v,propName){
+  if(!propName) return null;
+  const m=v.measurements.find(mm=>mm.property===propName);
+  return m?numericMeasureValue(m):null;
+}
+function fmtPropertyValue(val,propName){
+  if(val==null||val==='') return '—';
+  const e=catalogEntry(propName);
+  const unit=e&&e.baseUnit?' '+e.baseUnit:'';
+  const abs=Math.abs(val);
+  let numStr;
+  if(abs!==0&&(abs<0.01||abs>=10000)) numStr=val.toExponential(2);
+  else if(Number.isInteger(val)) numStr=String(val);
+  else numStr=val.toFixed(abs<1?3:2);
+  return numStr+unit;
+}
+// Light->dark gradient (brass family, matching the app's existing accent) used to color the semantic
+// map by a physical property instead of by family.
+const PROP_GRADIENT_LOW=[228,207,164];
+const PROP_GRADIENT_HIGH=[110,66,10];
+function lerpColor(c0,c1,t){
+  const r=Math.round(c0[0]+(c1[0]-c0[0])*t),g=Math.round(c0[1]+(c1[1]-c0[1])*t),b=Math.round(c0[2]+(c1[2]-c0[2])*t);
+  return `rgb(${r},${g},${b})`;
+}
+function colorScaleForProperty(propName){
+  const vals=state.variants.map(v=>propertyValueForVariant(v,propName)).filter(x=>x!=null);
+  if(!vals.length) return{min:0,max:1};
+  return{min:Math.min(...vals),max:Math.max(...vals)};
+}
+function propertyColor(val,range){
+  if(val==null) return null;
+  const t=range.max>range.min?(val-range.min)/(range.max-range.min):0.5;
+  return lerpColor(PROP_GRADIENT_LOW,PROP_GRADIENT_HIGH,Math.max(0,Math.min(1,t)));
+}
+// Pearson correlation coefficient. Used both directly (two continuous properties) and as a point-biserial
+// correlation when one input is a 0/1 presence flag — the two are the same computation.
+function pearsonR(xs,ys){
+  const n=xs.length;
+  if(n<2) return null;
+  const mx=xs.reduce((a,b)=>a+b,0)/n,my=ys.reduce((a,b)=>a+b,0)/n;
+  let num=0,dx2=0,dy2=0;
+  for(let i=0;i<n;i++){const dx=xs[i]-mx,dy=ys[i]-my;num+=dx*dy;dx2+=dx*dx;dy2+=dy*dy;}
+  const denom=Math.sqrt(dx2*dy2);
+  if(denom===0) return null;
+  return num/denom;
+}
+// Distinct descriptor texts (normalized) that appear on at least 2 variants — a descriptor on exactly
+// one variant can't meaningfully split the dataset into "has it" / "doesn't" groups.
+function descriptorFrequency(){
+  const counts={},labels={};
+  state.variants.forEach(v=>v.observations.forEach(o=>{
+    const norm=o.normalized||o.text.toLowerCase().trim();
+    if(!norm) return;
+    counts[norm]=(counts[norm]||0)+1;
+    if(!labels[norm]) labels[norm]=o.text;
+  }));
+  return Object.keys(counts).filter(k=>counts[k]>=2).sort((a,b)=>counts[b]-counts[a]||labels[a].localeCompare(labels[b])).map(k=>({key:k,label:labels[k],count:counts[k]}));
+}
+// Point-biserial correlation between "variant carries this descriptor" (0/1) and a measured property,
+// computed only over variants that actually have a value for that property.
+function descriptorPropertyCorrelation(descriptorKey,propName){
+  const flags=[],values=[];
+  state.variants.forEach(v=>{
+    const val=propertyValueForVariant(v,propName);
+    if(val==null) return;
+    const has=v.observations.some(o=>(o.normalized||o.text.toLowerCase().trim())===descriptorKey)?1:0;
+    flags.push(has);values.push(val);
+  });
+  const n=flags.length;
+  if(n<MIN_CORRELATION_N) return{n,r:null,reason:'low-n'};
+  if(new Set(flags).size<2) return{n,r:null,reason:'no-variance'};
+  return{n,r:pearsonR(flags,values)};
+}
+// Pearson correlation between two measured properties, over variants that have both.
+function propertyPropertyCorrelation(propX,propY){
+  const xs=[],ys=[];
+  state.variants.forEach(v=>{
+    const x=propertyValueForVariant(v,propX),y=propertyValueForVariant(v,propY);
+    if(x==null||y==null) return;
+    xs.push(x);ys.push(y);
+  });
+  const n=xs.length;
+  if(n<MIN_CORRELATION_N) return{n,r:null,reason:'low-n'};
+  return{n,r:pearsonR(xs,ys)};
+}
+function renderCorrResultHTML(res){
+  if(res.n<MIN_CORRELATION_N){
+    return `<p class="insufficient corr-result">Not enough overlapping data yet (n=${res.n}, need ≥${MIN_CORRELATION_N}) to show a coefficient. Add more measured variants that also carry this descriptor.</p>`;
+  }
+  if(res.r==null){
+    return `<p class="insufficient corr-result">Can't compute — no variance in one of the two variables across the ${res.n} overlapping variants.</p>`;
+  }
+  const abs=Math.abs(res.r);
+  const strength=abs>=0.7?'strong':abs>=0.4?'moderate':'weak';
+  const bucket=abs>=0.7?'high':abs>=0.4?'medium':'low';
+  return `<div class="corr-result">
+    <span class="conf conf-${bucket}">r = ${res.r.toFixed(2)}</span>
+    <span class="mono" style="font-size:11px;color:var(--graphite);margin-left:8px;">n = ${res.n} · ${strength} · exploratory, not a validated relationship</span>
+  </div>`;
+}
 function whyDetail(v,dim,score){
   const n=v.observations.filter(o=>['tactile','mechanical','visual'].includes(o.dimension)).length;
   const conf=n>=5?'High':n>=2?'Medium':'Low';
@@ -1186,6 +1306,70 @@ function renderExplore(){
         :`<span class="mono" style="font-size:9.5px;color:var(--graphite);">No property pairs with overlapping data yet.</span>`}
     </div>`;
   }
+  // Color-by-property control: only meaningful on the semantic map, where position comes from
+  // description-language and color can then show whether a physical property happens to line up
+  // with that spatial clustering — without computing or asserting any coefficient here.
+  const colorProps=availableAshbyProperties();
+  let colorByControl='',colorScaleLegend='';
+  if(state.exploreMapMode==='semantic'){
+    if(state.mapColorBy!=='family'&&!colorProps.includes(state.mapColorBy)) state.mapColorBy='family';
+    colorByControl=`<div class="color-by-toggle">
+      <select id="mapColorBySelect">
+        <option value="family" ${state.mapColorBy==='family'?'selected':''}>Color: Family</option>
+        ${colorProps.map(p=>`<option value="${esc(p)}" ${state.mapColorBy===p?'selected':''}>Color: ${esc(p)}</option>`).join('')}
+      </select>
+    </div>`;
+    if(state.mapColorBy!=='family'){
+      const range=colorScaleForProperty(state.mapColorBy);
+      colorScaleLegend=`<div class="color-scale-legend">
+        <div class="csl-label">${esc(state.mapColorBy)}</div>
+        <div class="color-scale-bar" style="background:linear-gradient(to right, rgb(${PROP_GRADIENT_LOW.join(',')}), rgb(${PROP_GRADIENT_HIGH.join(',')}));"></div>
+        <div class="color-scale-range"><span>${esc(fmtPropertyValue(range.min,state.mapColorBy))}</span><span>${esc(fmtPropertyValue(range.max,state.mapColorBy))}</span></div>
+        <div class="color-scale-nodata"><span class="dot-hollow"></span><span>no data</span></div>
+      </div>`;
+    }
+  }
+  // Correlations panel data
+  const descList=descriptorFrequency();
+  const corrProps=availableAshbyProperties();
+  if(!descList.some(d=>d.key===state.corrDescriptor)) state.corrDescriptor=descList[0]?descList[0].key:'';
+  if(!corrProps.includes(state.corrProperty)) state.corrProperty=corrProps[0]||'';
+  if(!corrProps.includes(state.corrPropA)) state.corrPropA=corrProps[0]||'';
+  if(!corrProps.includes(state.corrPropB)||state.corrPropB===state.corrPropA) state.corrPropB=corrProps.find(p=>p!==state.corrPropA)||'';
+  const descResult=(state.corrDescriptor&&state.corrProperty)?descriptorPropertyCorrelation(state.corrDescriptor,state.corrProperty):{n:0,r:null};
+  const propResult=(state.corrPropA&&state.corrPropB)?propertyPropertyCorrelation(state.corrPropA,state.corrPropB):{n:0,r:null};
+  const correlationsCard=`
+  <div class="card" style="margin-top:16px;">
+    <div class="eyebrow">Correlations · exploratory</div>
+    <h3>Does a descriptor line up with a measured property?</h3>
+    <p class="hint">Picks a real point-biserial coefficient between "carries this descriptor" and a measured property, across whatever overlapping data exists. Hidden below n=${MIN_CORRELATION_N} — with only a handful of user-submitted entries, small samples can look strongly correlated by chance alone.</p>
+    ${descList.length&&corrProps.length?`
+    <div class="field-row">
+      <div class="field"><label class="field-label">Descriptor</label>
+        <select id="corrDescriptorSelect">${descList.map(d=>`<option value="${esc(d.key)}" ${state.corrDescriptor===d.key?'selected':''}>${esc(d.label)} (${d.count})</option>`).join('')}</select>
+      </div>
+      <div class="field"><label class="field-label">Measured property</label>
+        <select id="corrPropertySelect">${corrProps.map(p=>`<option value="${esc(p)}" ${state.corrProperty===p?'selected':''}>${esc(p)}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div id="corrDescriptorResult">${renderCorrResultHTML(descResult)}</div>`
+    :`<p class="hint">Not enough descriptors or measured properties yet — add variants with both to unlock this.</p>`}
+    <hr style="border:none;border-top:1px solid var(--line);margin:18px 0;">
+    <h3>Do two measured properties move together?</h3>
+    <p class="hint">A standard Pearson correlation between two continuous measurements, same sample-size guardrail.</p>
+    ${corrProps.length>=2?`
+    <div class="field-row">
+      <div class="field"><label class="field-label">Property A</label>
+        <select id="corrPropASelect">${corrProps.map(p=>`<option value="${esc(p)}" ${state.corrPropA===p?'selected':''}>${esc(p)}</option>`).join('')}</select>
+      </div>
+      <div class="field"><label class="field-label">Property B</label>
+        <select id="corrPropBSelect">${corrProps.map(p=>`<option value="${esc(p)}" ${state.corrPropB===p?'selected':''}>${esc(p)}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div id="corrPropertyResult">${renderCorrResultHTML(propResult)}</div>`
+    :`<p class="hint">Need at least two measured properties with data across variants.</p>`}
+    <p class="hint" style="margin-top:14px;margin-bottom:0;">As with the rest of this prototype: associations here are probabilistic and contextual signals for further testing, never fixed definitions.</p>
+  </div>`;
   return`
   <div class="explore-grid">
     <div class="card">
@@ -1211,7 +1395,9 @@ function renderExplore(){
         <svg id="semanticMap" viewBox="0 0 1000 560" preserveAspectRatio="xMidYMid meet"></svg>
         ${mapModeControl}
         ${ashbyAxisControls}
+        ${colorByControl}
         <div class="map-legend">${legend}</div>
+        ${colorScaleLegend}
         <div class="map-hint">${state.exploreMapMode==='ashby'?'log-scaled axes':state.exploreMapMode==='grounded'?'drag to pan · scroll to zoom · non-demo data only':'scroll to zoom · drag to pan'}</div>
         <div class="tooltip-float" id="mapTooltip" style="display:none;"></div>
       </div>
@@ -1231,7 +1417,8 @@ function renderExplore(){
         <button class="btn" data-goto-detail="${sel.id}" style="margin-top:8px;">View full profile →</button>
       `:`<p class="hint">Select a variant on the map.</p>`}
     </div>
-  </div>`;
+  </div>
+  ${correlationsCard}`;
 }
 afterRender.explore=function(){
   if(state.exploreMapMode==='ashby') drawAshbyPlot();
@@ -1242,6 +1429,32 @@ afterRender.explore=function(){
     const plots=availableAshbyPlots();
     state.ashbyPlot=plots[parseInt(e.target.value)]||null;
     render();
+  });
+  document.getElementById('mapColorBySelect')?.addEventListener('change',e=>{
+    state.mapColorBy=e.target.value;
+    render();
+  });
+  // Correlation panel selects update just their own result div — no need to redraw the map or
+  // recompute anything else on the page.
+  document.getElementById('corrDescriptorSelect')?.addEventListener('change',e=>{
+    state.corrDescriptor=e.target.value;
+    const res=descriptorPropertyCorrelation(state.corrDescriptor,state.corrProperty);
+    document.getElementById('corrDescriptorResult').innerHTML=renderCorrResultHTML(res);
+  });
+  document.getElementById('corrPropertySelect')?.addEventListener('change',e=>{
+    state.corrProperty=e.target.value;
+    const res=descriptorPropertyCorrelation(state.corrDescriptor,state.corrProperty);
+    document.getElementById('corrDescriptorResult').innerHTML=renderCorrResultHTML(res);
+  });
+  document.getElementById('corrPropASelect')?.addEventListener('change',e=>{
+    state.corrPropA=e.target.value;
+    const res=propertyPropertyCorrelation(state.corrPropA,state.corrPropB);
+    document.getElementById('corrPropertyResult').innerHTML=renderCorrResultHTML(res);
+  });
+  document.getElementById('corrPropBSelect')?.addEventListener('change',e=>{
+    state.corrPropB=e.target.value;
+    const res=propertyPropertyCorrelation(state.corrPropA,state.corrPropB);
+    document.getElementById('corrPropertyResult').innerHTML=renderCorrResultHTML(res);
   });
   const input=document.getElementById('descInput');
   const addBtn=document.getElementById('addDescBtn');
@@ -1267,6 +1480,8 @@ function drawMap(){
     const qAvg=averageSemanticVec(state.describeQuery);
     highlightIds=new Set(state.variants.map(v=>({id:v.id,sim:SemanticEngine.similarity(qAvg,variantSemanticEmbedding(v))})).sort((a,b)=>b.sim-a.sim).slice(0,6).map(x=>x.id));
   }
+  const colorProp=state.mapColorBy&&state.mapColorBy!=='family'?state.mapColorBy:null;
+  const colorRange=colorProp?colorScaleForProperty(colorProp):null;
   state.variants.forEach(v=>{
     if(state.legendOff[v.familyId]) return;
     const pos=state.mapPositions[v.id];
@@ -1276,13 +1491,34 @@ function drawMap(){
     const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
     circle.setAttribute('cx',pos.x);circle.setAttribute('cy',pos.y);
     circle.setAttribute('r',isSel?11:(isHi?9:6.5));
-    circle.setAttribute('fill',familyColor(v.familyId));
-    circle.setAttribute('fill-opacity',highlightIds?(isHi?0.95:0.18):(isSel?1:0.75));
-    circle.setAttribute('stroke',isSel?'#1C231F':'none');
-    circle.setAttribute('stroke-width',isSel?2:0);
+    let tooltip=v.name+' — '+familyOf(v).name;
+    if(colorProp){
+      // Color reflects the chosen physical property; family is still available via the legend
+      // filter chips, it just no longer drives the fill. Variants with no value for this property
+      // render as a hollow dashed circle rather than guessing a color for them.
+      const val=propertyValueForVariant(v,colorProp);
+      tooltip+=' — '+colorProp+': '+fmtPropertyValue(val,colorProp);
+      if(val==null){
+        circle.setAttribute('fill','none');
+        circle.setAttribute('fill-opacity',highlightIds?(isHi?0.9:0.12):1);
+        circle.setAttribute('stroke','var(--graphite)');
+        circle.setAttribute('stroke-width',isSel?2:1.2);
+        circle.setAttribute('stroke-dasharray','2,2');
+      }else{
+        circle.setAttribute('fill',propertyColor(val,colorRange));
+        circle.setAttribute('fill-opacity',highlightIds?(isHi?0.95:0.18):1);
+        circle.setAttribute('stroke',isSel?'#1C231F':'none');
+        circle.setAttribute('stroke-width',isSel?2:0);
+      }
+    }else{
+      circle.setAttribute('fill',familyColor(v.familyId));
+      circle.setAttribute('fill-opacity',highlightIds?(isHi?0.95:0.18):(isSel?1:0.75));
+      circle.setAttribute('stroke',isSel?'#1C231F':'none');
+      circle.setAttribute('stroke-width',isSel?2:0);
+    }
     circle.classList.add('dot');
     circle.setAttribute('data-select-variant',v.id);
-    circle.setAttribute('data-tooltip',v.name+' — '+familyOf(v).name);
+    circle.setAttribute('data-tooltip',tooltip);
     g.appendChild(circle);
     if(isSel){
       const label=document.createElementNS('http://www.w3.org/2000/svg','text');
